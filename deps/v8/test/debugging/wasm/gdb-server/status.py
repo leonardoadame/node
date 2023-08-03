@@ -30,7 +30,7 @@ class Tests(unittest.TestCase):
       match = re.match('m([0-9])$', reply)
       if match is None:
         raise AssertionError('Bad active thread list reply: %r' % reply)
-      thread_id = int(match.group(1), 10)
+      thread_id = int(match[1], 10)
       # There should not be other threads.
       reply = connection.RspRequest('qsThreadInfo')
       self.assertEqual("l", reply)

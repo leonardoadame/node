@@ -100,10 +100,7 @@ def new_context(
     """Internal helper for context creation."""
     if vars is None:
         vars = {}
-    if shared:
-        parent = vars
-    else:
-        parent = dict(globals or (), **vars)
+    parent = vars if shared else dict(globals or (), **vars)
     if locals:
         # if the parent is shared a copy should be created because
         # we don't want to modify the dict passed
@@ -219,10 +216,7 @@ class Context:
         """
         rv = self.resolve_or_missing(key)
 
-        if rv is missing:
-            return self.environment.undefined(name=key)
-
-        return rv
+        return self.environment.undefined(name=key) if rv is missing else rv
 
     def resolve_or_missing(self, key: str) -> t.Any:
         """Look up a variable by name, or return a ``missing`` sentinel
@@ -237,10 +231,7 @@ class Context:
         if key in self.vars:
             return self.vars[key]
 
-        if key in self.parent:
-            return self.parent[key]
-
-        return missing
+        return self.parent[key] if key in self.parent else missing
 
     def get_exported(self) -> t.Dict[str, t.Any]:
         """Get a new dict with the exported variables."""
@@ -253,9 +244,7 @@ class Context:
         """
         if not self.vars:
             return self.parent
-        if not self.parent:
-            return self.vars
-        return dict(self.parent, **self.vars)
+        return self.vars if not self.parent else dict(self.parent, **self.vars)
 
     @internalcode
     def call(
@@ -366,10 +355,7 @@ class BlockReference:
             [x async for x in self._stack[self._depth](self._context)]  # type: ignore
         )
 
-        if self._context.eval_ctx.autoescape:
-            return Markup(rv)
-
-        return rv
+        return Markup(rv) if self._context.eval_ctx.autoescape else rv
 
     @internalcode
     def __call__(self) -> str:
@@ -378,10 +364,7 @@ class BlockReference:
 
         rv = concat(self._stack[self._depth](self._context))
 
-        if self._context.eval_ctx.autoescape:
-            return Markup(rv)
-
-        return rv
+        return Markup(rv) if self._context.eval_ctx.autoescape else rv
 
 
 class LoopContext:
@@ -520,10 +503,7 @@ class LoopContext:
         """
         rv = self._peek_next()
 
-        if rv is missing:
-            return self._undefined("there is no next item")
-
-        return rv
+        return self._undefined("there is no next item") if rv is missing else rv
 
     def cycle(self, *args: V) -> V:
         """Return a value from the given args, cycling through based on
@@ -631,10 +611,7 @@ class AsyncLoopContext(LoopContext):
     async def nextitem(self) -> t.Union[t.Any, "Undefined"]:
         rv = await self._peek_next()
 
-        if rv is missing:
-            return self._undefined("there is no next item")
-
-        return rv
+        return self._undefined("there is no next item") if rv is missing else rv
 
     def __aiter__(self) -> "AsyncLoopContext":
         return self
@@ -765,10 +742,7 @@ class Macro:
     async def _async_invoke(self, arguments: t.List[t.Any], autoescape: bool) -> str:
         rv = await self._func(*arguments)  # type: ignore
 
-        if autoescape:
-            return Markup(rv)
-
-        return rv  # type: ignore
+        return Markup(rv) if autoescape else rv
 
     def _invoke(self, arguments: t.List[t.Any], autoescape: bool) -> str:
         if self._environment.is_async:
@@ -853,7 +827,7 @@ class Undefined:
 
     @internalcode
     def __getattr__(self, name: str) -> t.Any:
-        if name[:2] == "__":
+        if name.startswith("__"):
             raise AttributeError(name)
 
         return self._fail_with_undefined_error()

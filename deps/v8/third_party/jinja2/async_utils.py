@@ -39,10 +39,7 @@ def async_variant(normal_func):  # type: ignore
             if need_eval_context:
                 args = args[1:]
 
-            if b:
-                return async_func(*args, **kwargs)
-
-            return normal_func(*args, **kwargs)
+            return async_func(*args, **kwargs) if b else normal_func(*args, **kwargs)
 
         if need_eval_context:
             wrapper = pass_eval_context(wrapper)

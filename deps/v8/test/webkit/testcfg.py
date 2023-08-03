@@ -95,4 +95,5 @@ class TestCase(testcase.D8TestCase):
   def output_proc(self):
     return webkit.OutProc(
         self.expected_outcomes,
-        os.path.join(self.suite.root, self.path) + '-expected.txt')
+        f'{os.path.join(self.suite.root, self.path)}-expected.txt',
+    )

@@ -56,21 +56,27 @@ print("\033[92mInfo: \033[0m" + "Configuring for " + DEST_CPU + "...")
 
 if platform.system() == "Darwin":
     host_os = "darwin"
-    toolchain_path = android_ndk_path + "/toolchains/llvm/prebuilt/darwin-x86_64"
+    toolchain_path = f"{android_ndk_path}/toolchains/llvm/prebuilt/darwin-x86_64"
 
 elif platform.system() == "Linux":
     host_os = "linux"
-    toolchain_path = android_ndk_path + "/toolchains/llvm/prebuilt/linux-x86_64"
+    toolchain_path = f"{android_ndk_path}/toolchains/llvm/prebuilt/linux-x86_64"
 
 os.environ['PATH'] += os.pathsep + toolchain_path + "/bin"
-os.environ['CC'] = toolchain_path + "/bin/" + TOOLCHAIN_PREFIX + android_sdk_version + "-" +  "clang"
-os.environ['CXX'] = toolchain_path + "/bin/" + TOOLCHAIN_PREFIX + android_sdk_version + "-" + "clang++"
+os.environ[
+    'CC'
+] = f"{toolchain_path}/bin/{TOOLCHAIN_PREFIX}{android_sdk_version}-clang"
+os.environ[
+    'CXX'
+] = f"{toolchain_path}/bin/{TOOLCHAIN_PREFIX}{android_sdk_version}-clang++"
 
-GYP_DEFINES = "target_arch=" + arch
-GYP_DEFINES += " v8_target_arch=" + arch
-GYP_DEFINES += " android_target_arch=" + arch
-GYP_DEFINES += " host_os=" + host_os + " OS=android"
+GYP_DEFINES = f"target_arch={arch}"
+GYP_DEFINES += f" v8_target_arch={arch}"
+GYP_DEFINES += f" android_target_arch={arch}"
+GYP_DEFINES += f" host_os={host_os} OS=android"
 os.environ['GYP_DEFINES'] = GYP_DEFINES
 
 if os.path.exists("./configure"):
-    os.system("./configure --dest-cpu=" + DEST_CPU + " --dest-os=android --openssl-no-asm --cross-compiling")
+    os.system(
+        f"./configure --dest-cpu={DEST_CPU} --dest-os=android --openssl-no-asm --cross-compiling"
+    )

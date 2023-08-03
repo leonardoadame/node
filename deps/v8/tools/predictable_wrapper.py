@@ -27,9 +27,7 @@ TIMEOUT = 120
 command.setup(utils.GuessOS(), None)
 
 def maybe_decode(message):
-  if not isinstance(message, str):
-    return message.decode()
-  return message
+  return message.decode() if not isinstance(message, str) else message
 
 
 def main(args):
@@ -52,7 +50,7 @@ def main(args):
     if output.stderr:
       print('### Stderr:')
       print(output.stderr)
-    print('### Return code: %s' % output.exit_code)
+    print(f'### Return code: {output.exit_code}')
     if output.HasTimedOut():
       # If we get a timeout in any run, we are in an unpredictable state. Just
       # report it as a failure and don't rerun.

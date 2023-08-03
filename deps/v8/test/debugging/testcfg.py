@@ -43,9 +43,7 @@ class TestCase(PYTestCase):
     self._source_flags = self._parse_source_flags(source)
 
   def _parse_source_files(self, source):
-    files = []
-    files.append(self._get_source_path())
-    return files
+    return [self._get_source_path()]
 
   def _parse_source_flags(self, source=None):
     source = source or self.get_source()
@@ -73,7 +71,7 @@ class TestCase(PYTestCase):
     base_path = os.path.join(self.suite.root, self.path)
     if os.path.exists(base_path + self._get_suffix()):
       return base_path + self._get_suffix()
-    return base_path + '.py'
+    return f'{base_path}.py'
 
   def skip_predictable(self):
     return super(TestCase, self).skip_predictable() or self._expected_fail()

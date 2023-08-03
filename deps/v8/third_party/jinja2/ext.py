@@ -355,12 +355,9 @@ class InternationalizationExtension(Extension):
         """Parse a translatable tag."""
         lineno = next(parser.stream).lineno
 
-        context = None
         context_token = parser.stream.next_if("string")
 
-        if context_token is not None:
-            context = context_token.value
-
+        context = context_token.value if context_token is not None else None
         # find all the variables referenced.  Additionally a variable can be
         # defined in the body of the trans block too, but this is checked at
         # a later state.
@@ -712,11 +709,7 @@ def extract_from_ast(
             if not out:
                 continue
         else:
-            if len(strings) == 1:
-                out = strings[0]
-            else:
-                out = tuple(strings)
-
+            out = strings[0] if len(strings) == 1 else tuple(strings)
         yield node.lineno, node.node.name, out
 
 

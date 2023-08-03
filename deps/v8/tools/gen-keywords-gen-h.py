@@ -54,10 +54,10 @@ def trim_and_dcheck_char_table(out):
   reads_re = re.compile(
       r'asso_values\[static_cast<unsigned char>\(str\[(\d+)\]\)\]')
 
-  dchecks = []
-  for str_read in reads_re.finditer(out):
-    dchecks.append("DCHECK_LT(str[%d], 128);" % int(str_read.group(1)))
-
+  dchecks = [
+      "DCHECK_LT(str[%d], 128);" % int(str_read.group(1))
+      for str_read in reads_re.finditer(out)
+  ]
   if TRIM_CHAR_TABLE:
     out = checked_sub(
         r'static const unsigned char asso_values\[\]\s*=\s*\{(\s*\d+\s*,){96}',
@@ -93,7 +93,7 @@ def pad_tables(out):
   # to a power of two and mask the hash.
 
   # First get the new size
-  max_hash_value = int(re.search(r'MAX_HASH_VALUE\s*=\s*(\d+)', out).group(1))
+  max_hash_value = int(re.search(r'MAX_HASH_VALUE\s*=\s*(\d+)', out)[1])
   old_table_length = max_hash_value + 1
   new_table_length = next_power_of_2(old_table_length)
   table_padding_len = new_table_length - old_table_length
@@ -245,7 +245,7 @@ def main():
     return 0
 
   except subprocess.CalledProcessError as e:
-    sys.stderr.write("Error calling '{}'\n".format(" ".join(e.cmd)))
+    sys.stderr.write(f"""Error calling '{" ".join(e.cmd)}'\n""")
     return e.returncode
 
 

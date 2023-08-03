@@ -101,7 +101,7 @@ class StatsViewer(object):
     something goes wrong print an informative message and exit the
     program."""
     if not os.path.exists(self.data_name):
-      maps_name = "/proc/%s/maps" % self.data_name
+      maps_name = f"/proc/{self.data_name}/maps"
       if not os.path.exists(maps_name):
         print("\"%s\" is neither a counter file nor a PID." % self.data_name)
         sys.exit(1)
@@ -113,7 +113,7 @@ class StatsViewer(object):
             self.data_name = m.group(0)
             break
         if self.data_name is None:
-          print("Can't find counter file in maps for PID %s." % self.data_name)
+          print(f"Can't find counter file in maps for PID {self.data_name}.")
           sys.exit(1)
       finally:
         maps_file.close()
@@ -126,7 +126,7 @@ class StatsViewer(object):
       return CounterCollection(data_access)
     elif data_access.IntAt(0) == CHROME_COUNTERS_FILE_MAGIC_NUMBER:
       return ChromeCounterCollection(data_access)
-    print("File %s is not stats data." % self.data_name)
+    print(f"File {self.data_name} is not stats data.")
     sys.exit(1)
 
   def CleanUp(self):
@@ -166,7 +166,7 @@ class StatsViewer(object):
 
   def UpdateTime(self):
     """Update the title of the window with the current time."""
-    self.root.title("Stats Viewer [updated %s]" % time.strftime("%H:%M:%S"))
+    self.root.title(f'Stats Viewer [updated {time.strftime("%H:%M:%S")}]')
 
   def ScheduleUpdate(self):
     """Schedules the next ui update."""
@@ -208,7 +208,7 @@ class StatsViewer(object):
       counter = names[name]
       if ":" in name:
         name = name[name.find(":")+1:]
-      if not name in groups:
+      if name not in groups:
         groups[name] = []
       groups[name].append(counter)
 
@@ -225,11 +225,9 @@ class StatsViewer(object):
     for child in self.root.children.values():
       child.destroy()
 
-    # Build new ui
-    index = 0
     sorted_groups = groups.keys()
     sorted_groups.sort()
-    for counter_name in sorted_groups:
+    for index, counter_name in enumerate(sorted_groups):
       counter_objs = groups[counter_name]
       if self.name_filter.match(counter_name):
         name = Tkinter.Label(self.root, width=50, anchor=Tkinter.W,
@@ -254,7 +252,6 @@ class StatsViewer(object):
         ui_counter = UiCounter(var, format)
         self.ui_counters[name] = ui_counter
         ui_counter.Set(counter.Value())
-      index += 1
     self.root.update()
 
   def OpenWindow(self):
@@ -294,10 +291,9 @@ class UiCounter(object):
     """
     if value == self.last_value:
       return False
-    else:
-      self.last_value = value
-      self.var.set(self.format % value)
-      return True
+    self.last_value = value
+    self.var.set(self.format % value)
+    return True
 
 
 class SharedDataAccess(object):
@@ -348,11 +344,9 @@ class Counter(object):
     """Return the ascii name of this counter."""
     result = ""
     index = self.offset + 4
-    current = self.data.ByteAt(index)
-    while current:
+    while current := self.data.ByteAt(index):
       result += chr(current)
       index += 1
-      current = self.data.ByteAt(index)
     return result
 
 
@@ -406,11 +400,9 @@ class ChromeCounter(object):
     """Return the ascii name of this counter."""
     result = ""
     index = self.name_offset
-    current = self.data.ByteAt(index)
-    while current:
+    while current := self.data.ByteAt(index):
       result += chr(current)
       index += 1
-      current = self.data.ByteAt(index)
     return result
 
 

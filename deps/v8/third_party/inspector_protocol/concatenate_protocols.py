@@ -32,10 +32,9 @@ def main(argv):
     domains += parsed_json["domains"]
     version = parsed_json["version"]
 
-  output_file = open(argv[-1], "w")
-  json.dump({"version": version, "domains": domains}, output_file,
-            indent=4, sort_keys=False, separators=(',', ': '))
-  output_file.close()
+  with open(argv[-1], "w") as output_file:
+    json.dump({"version": version, "domains": domains}, output_file,
+              indent=4, sort_keys=False, separators=(',', ': '))
 
 
 if __name__ == '__main__':

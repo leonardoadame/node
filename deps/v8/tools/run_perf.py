@@ -381,11 +381,11 @@ class GraphConfig(Node):
     # Descrete values (with parent defaults).
     self.binary = suite.get('binary', parent.binary)
     self.run_count = suite.get('run_count', parent.run_count)
-    self.run_count = suite.get('run_count_%s' % arch, self.run_count)
+    self.run_count = suite.get(f'run_count_{arch}', self.run_count)
     self.retry_count = suite.get('retry_count', parent.retry_count)
-    self.retry_count = suite.get('retry_count_%s' % arch, self.retry_count)
+    self.retry_count = suite.get(f'retry_count_{arch}', self.retry_count)
     self.timeout = suite.get('timeout', parent.timeout)
-    self.timeout = suite.get('timeout_%s' % arch, self.timeout)
+    self.timeout = suite.get(f'timeout_{arch}', self.timeout)
     self.units = suite.get('units', parent.units)
     self.total = suite.get('total', parent.total)
     self.results_processor = suite.get(
@@ -419,7 +419,7 @@ class GraphConfig(Node):
     return '/'.join(self.graphs)
 
   def __str__(self):
-    return "%s(%s)" % (type(self).__name__, self.name)
+    return f"{type(self).__name__}({self.name})"
 
 
 class VariantConfig(GraphConfig):
@@ -430,12 +430,15 @@ class VariantConfig(GraphConfig):
     super(VariantConfig, self).__init__(suite, parent, arch)
     assert "variants" in suite
     for variant in suite.get('variants'):
-      assert "variants" not in variant, \
-        "Cannot directly nest variants:" + str(variant)[:100]
-      assert "name" in variant, \
-          "Variant must have 'name' property: " + str(variant)[:100]
-      assert len(variant) >= 2, \
-          "Variant must define other properties than 'name': " + str(variant)
+      assert (
+          "variants"
+          not in variant), f"Cannot directly nest variants:{str(variant)[:100]}"
+      assert (
+          "name"
+          in variant), f"Variant must have 'name' property: {str(variant)[:100]}"
+      assert (
+          len(variant) >=
+          2), f"Variant must define other properties than 'name': {str(variant)}"
 
 
 class LeafTraceConfig(GraphConfig):
@@ -450,7 +453,7 @@ class LeafTraceConfig(GraphConfig):
           (self.results_regexp, self.name))
 
   def AppendChild(self, node):
-    raise Exception("%s cannot have child configs." % type(self).__name__)
+    raise Exception(f"{type(self).__name__} cannot have child configs.")
 
   def ConsumeOutput(self, output, result_tracker):
     """Extracts trace results from the output.
@@ -471,31 +474,27 @@ class LeafTraceConfig(GraphConfig):
           results_for_total.append(result)
 
     result = None
-    stddev = None
-
     try:
-      result = float(
-        re.search(self.results_regexp, output.stdout, re.M).group(1))
+      result = float(re.search(self.results_regexp, output.stdout, re.M)[1])
     except ValueError:
       result_tracker.AddError(
-          'Regexp "%s" returned a non-numeric for test %s.' %
-          (self.results_regexp, self.name))
+          f'Regexp "{self.results_regexp}" returned a non-numeric for test {self.name}.'
+      )
     except:
       result_tracker.AddError(
-          'Regexp "%s" did not match for test %s.' %
-          (self.results_regexp, self.name))
+          f'Regexp "{self.results_regexp}" did not match for test {self.name}.')
 
+    stddev = None
     try:
       if self.stddev_regexp:
         if result_tracker.TraceHasStdDev(self):
           result_tracker.AddError(
-              'Test %s should only run once since a stddev is provided by the '
-              'test.' % self.name)
-        stddev = re.search(self.stddev_regexp, output.stdout, re.M).group(1)
+              f'Test {self.name} should only run once since a stddev is provided by the test.'
+          )
+        stddev = re.search(self.stddev_regexp, output.stdout, re.M)[1]
     except:
       result_tracker.AddError(
-          'Regexp "%s" did not match for test %s.' %
-          (self.stddev_regexp, self.name))
+          f'Regexp "{self.stddev_regexp}" did not match for test {self.name}.')
 
     if result:
       result_tracker.AddTraceResult(self, result, stddev)
@@ -517,8 +516,7 @@ class TraceConfig(GraphConfig):
     """
     results_for_total = []
     for trace in self.children:
-      result = trace.ConsumeOutput(output, result_tracker)
-      if result:
+      if result := trace.ConsumeOutput(output, result_tracker):
         results_for_total.append(result)
 
     if self.total:
@@ -541,8 +539,8 @@ class TraceConfig(GraphConfig):
   def AppendChild(self, node):
     if node.__class__ not in (TraceConfig, LeafTraceConfig):
       raise Exception(
-          "%s only allows TraceConfig and LeafTraceConfig as child configs." %
-          type(self).__name__)
+          f"{type(self).__name__} only allows TraceConfig and LeafTraceConfig as child configs."
+      )
     super(TraceConfig, self).AppendChild(node)
 
 
@@ -554,7 +552,7 @@ class RunnableConfig(TraceConfig):
     self.arch = arch
     assert self.main, "No main js file provided"
     if not self.owners:
-      logging.error("No owners provided for %s" % self.name)
+      logging.error(f"No owners provided for {self.name}")
 
   def ChangeCWD(self, suite_path):
     """Changes the cwd to to path defined in the current graph.
@@ -564,7 +562,7 @@ class RunnableConfig(TraceConfig):
     suite_dir = os.path.abspath(os.path.dirname(suite_path))
     bench_dir = os.path.normpath(os.path.join(*self.path))
     cwd = os.path.join(suite_dir, bench_dir)
-    logging.debug('Changing CWD to: %s' % cwd)
+    logging.debug(f'Changing CWD to: {cwd}')
     os.chdir(cwd)
 
   def GetCommandFlags(self, extra_flags=None):
@@ -609,7 +607,7 @@ class RunnableLeafTraceConfig(LeafTraceConfig, RunnableConfig):
   def __init__(self, suite, parent, arch):
     super(RunnableLeafTraceConfig, self).__init__(suite, parent, arch)
     if not self.owners:
-      logging.error("No owners provided for %s" % self.name)
+      logging.error(f"No owners provided for {self.name}")
 
   def ProcessOutput(self, output, result_tracker, count):
     result_tracker.AddRunnableDuration(self, output.duration)
@@ -624,22 +622,15 @@ def MakeGraphConfig(suite, parent, arch):
 def GetGraphConfigClass(suite, parent):
   """Factory method for making graph configuration objects."""
   if isinstance(parent, TraceConfig):
-    if suite.get("tests"):
-      return TraceConfig
-    return LeafTraceConfig
+    return TraceConfig if suite.get("tests") else LeafTraceConfig
   elif suite.get('main') is not None:
     # A main file makes this graph runnable. Empty strings are accepted.
-    if suite.get('tests'):
-      # This graph has subgraphs (traces).
-      return RunnableConfig
-    else:
-      # This graph has no subgraphs, it's a leaf.
-      return RunnableLeafTraceConfig
+    return RunnableConfig if suite.get('tests') else RunnableLeafTraceConfig
   elif suite.get('tests'):
     # This is neither a leaf nor a runnable.
     return GraphConfig
-  else:  # pragma: no cover
-    raise Exception('Invalid suite configuration.' + str(suite)[:200])
+  else:# pragma: no cover
+    raise Exception(f'Invalid suite configuration.{str(suite)[:200]}')
 
 
 def BuildGraphConfigs(suite, parent, arch):
@@ -715,8 +706,7 @@ def FlattenRunnables(node, node_cb):
     yield node
   elif isinstance(node, Node):
     for child in node._children:
-      for result in FlattenRunnables(child, node_cb):
-        yield result
+      yield from FlattenRunnables(child, node_cb)
   else:  # pragma: no cover
     raise Exception('Invalid suite configuration.')
 
@@ -732,14 +722,8 @@ def find_build_directory(base_path, arch):
     # Windows.
     return (os.path.isfile(os.path.join(path, 'd8')) or
             os.path.isfile(os.path.join(path, 'node')))
-  possible_paths = [
-    # Location developer wrapper scripts is using.
-    '%s.release' % arch,
-    # Current build location on bots.
-    'build',
-    # Legacy build location on bots.
-    'Release',
-  ]
+
+  possible_paths = [f'{arch}.release', 'build', 'Release']
   possible_paths = [os.path.join(base_path, p) for p in possible_paths]
   actual_paths = list(filter(is_build, possible_paths))
   assert actual_paths, 'No build directory found.'
@@ -848,16 +832,15 @@ class DesktopPlatform(Platform):
   def _Run(self, runnable, count, secondary=False):
     shell_dir = self.shell_dir_secondary if secondary else self.shell_dir
     cmd = runnable.GetCommand(self.command_prefix, shell_dir, self.extra_flags)
-    logging.debug('Running command: %s' % cmd)
+    logging.debug(f'Running command: {cmd}')
     output = Output() if self.is_dry_run else cmd.execute()
 
     if output.IsSuccess() and '--prof' in self.extra_flags:
-      os_prefix = {'linux': 'linux', 'macos': 'mac'}.get(utils.GuessOS())
-      if os_prefix:
+      if os_prefix := {'linux': 'linux', 'macos': 'mac'}.get(utils.GuessOS()):
         if not self.is_dry_run:
-          tick_tools = os.path.join(TOOLS_BASE, '%s-tick-processor' % os_prefix)
-          subprocess.check_call(tick_tools + ' --only-summary', shell=True)
-      else:  # pragma: no cover
+          tick_tools = os.path.join(TOOLS_BASE, f'{os_prefix}-tick-processor')
+          subprocess.check_call(f'{tick_tools} --only-summary', shell=True)
+      else:
         logging.warning(
             'Profiler option currently supported on Linux and Mac OS.')
 
@@ -986,7 +969,7 @@ class CustomMachineConfiguration:
 
     new_value = CustomMachineConfiguration.GetASLR()
     if value != new_value:
-      raise Exception('Present value is %s' % new_value)
+      raise Exception(f'Present value is {new_value}')
 
   @staticmethod
   def GetCPUCoresRange():
@@ -1003,8 +986,7 @@ class CustomMachineConfiguration:
 
   @staticmethod
   def GetCPUPathForId(cpu_index):
-    ret = '/sys/devices/system/cpu/cpu'
-    ret += str(cpu_index)
+    ret = f'/sys/devices/system/cpu/cpu{str(cpu_index)}'
     ret += '/cpufreq/scaling_governor'
     return ret
 
@@ -1018,7 +1000,7 @@ class CustomMachineConfiguration:
         with open(cpu_device, 'r') as f:
           # We assume the governors of all CPUs are set to the same value
           val = f.readline().strip()
-          if ret == None:
+          if ret is None:
             ret = val
           elif ret != val:
             raise Exception('CPU cores have differing governor settings')
@@ -1044,8 +1026,7 @@ class CustomMachineConfiguration:
 
     cur_value = CustomMachineConfiguration.GetCPUGovernor()
     if cur_value != value:
-      raise Exception('Could not set CPU governor. Present value is %s'
-                      % cur_value )
+      raise Exception(f'Could not set CPU governor. Present value is {cur_value}')
 
 
 class MaxTotalDurationReachedError(Exception):
@@ -1167,7 +1148,7 @@ def Main(argv):
 
   workspace = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
-  if args.binary_override_path == None:
+  if args.binary_override_path is None:
     args.shell_dir = find_build_directory(
         os.path.join(workspace, args.outdir), args.arch)
     default_binary_name = 'd8'
@@ -1199,7 +1180,7 @@ def Main(argv):
     if args.filter:
       args.filter = re.compile(args.filter)
   except re.error:
-    logging.error("Invalid regular expression for --filter=%s" % args.filter)
+    logging.error(f"Invalid regular expression for --filter={args.filter}")
     return INFRA_FAILURE_RETCODE
 
   # Ensure all arguments have absolute path before we start changing current
@@ -1214,10 +1195,10 @@ def Main(argv):
   result_tracker_secondary = ResultTracker()
   have_failed_tests = False
   with CustomMachineConfiguration(governor = args.cpu_governor,
-                                  disable_aslr = args.noaslr) as conf:
+                                    disable_aslr = args.noaslr) as conf:
     for path in args.suite:
       if not os.path.exists(path):  # pragma: no cover
-        result_tracker.AddError('Configuration file %s does not exist.' % path)
+        result_tracker.AddError(f'Configuration file {path} does not exist.')
         continue
 
       with open(path) as f:
@@ -1260,8 +1241,7 @@ def Main(argv):
                 yield counter
                 counter += 1
             else:
-              for i in range(0, max(1, args.run_count or runnable.run_count)):
-                yield i
+              yield from range(0, max(1, args.run_count or runnable.run_count))
 
           for i in RunGenerator(runnable):
             attempts_left = runnable.retry_count + 1

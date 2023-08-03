@@ -66,10 +66,8 @@ class TestCase(testcase.D8TestCase):
 
     if timeout_params[0] in ["long"]:
       return timeout_params[0]
-    else:
-      print("unknown timeout param %s in %s%s"
-            % (timeout_params[0], self.path, ANY_JS))
-      return None
+    print(f"unknown timeout param {timeout_params[0]} in {self.path}{ANY_JS}")
+    return None
 
   def _get_files_params(self):
     files = [self.suite.mjsunit_js,
@@ -109,10 +107,11 @@ class TestCase(testcase.D8TestCase):
     return files
 
   def _get_source_flags(self):
-    for proposal in proposal_flags:
-      if get_proposal_path_identifier(proposal) in self.path:
-        return proposal['flags']
-    return ['--wasm-staging']
+    return next(
+        (proposal['flags'] for proposal in proposal_flags
+         if get_proposal_path_identifier(proposal) in self.path),
+        ['--wasm-staging'],
+    )
 
   def _get_source_path(self):
     # All tests are named `path/name.any.js`

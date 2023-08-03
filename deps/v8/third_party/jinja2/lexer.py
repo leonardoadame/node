@@ -282,10 +282,7 @@ class Token(t.NamedTuple):
         if self.type == expr:
             return True
 
-        if ":" in expr:
-            return expr.split(":", 1) == [self.type, self.value]
-
-        return False
+        return expr.split(":", 1) == [self.type, self.value] if ":" in expr else False
 
     def test_any(self, *iterable: str) -> bool:
         """Test against multiple token expressions."""
@@ -366,10 +363,7 @@ class TokenStream:
         """Perform the token test and return the token if it matched.
         Otherwise the return value is `None`.
         """
-        if self.current.test(expr):
-            return next(self)
-
-        return None
+        return next(self) if self.current.test(expr) else None
 
     def skip_if(self, expr: str) -> bool:
         """Like :meth:`next_if` but only returns `True` or `False`."""
@@ -690,7 +684,7 @@ class Lexer:
 
         if state is not None and state != "root":
             assert state in ("variable", "block"), "invalid state"
-            stack.append(state + "_begin")
+            stack.append(f"{state}_begin")
 
         statetokens = self.rules[stack[-1]]
         source_length = len(source)

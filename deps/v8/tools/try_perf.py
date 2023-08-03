@@ -71,11 +71,15 @@ def main():
                       'longer runtime, but also provide more reliable results.')
   for option in sorted(BOTS):
     parser.add_argument(
-        option, dest='bots', action='append_const', const=BOTS[option],
-        help='Add %s trybot.' % BOTS[option])
+        option,
+        dest='bots',
+        action='append_const',
+        const=BOTS[option],
+        help=f'Add {BOTS[option]} trybot.',
+    )
   options = parser.parse_args()
   if not options.bots:
-    print('No trybots specified. Using default %s.' % ','.join(DEFAULT_BOTS))
+    print(f"No trybots specified. Using default {','.join(DEFAULT_BOTS)}.")
     options.bots = DEFAULT_BOTS
 
   if not options.benchmarks:
@@ -89,7 +93,7 @@ def main():
             'Available public benchmarks: %s' % (benchmark, PUBLIC_BENCHMARKS))
       print('Proceed anyways? [Y/n] ', end=' ')
       answer = sys.stdin.readline().strip()
-      if answer != "" and answer != "Y" and answer != "y":
+      if answer not in ["", "Y", "y"]:
         return 1
 
   assert '"' not in options.extra_flags and '\'' not in options.extra_flags, (
@@ -100,10 +104,10 @@ def main():
       'update_depot_tools', shell=True, stderr=subprocess.STDOUT, cwd=V8_BASE)
 
   cmd = ['git cl try', '-B', 'luci.v8-internal.try']
-  cmd += ['-b %s' % bot for bot in options.bots]
+  cmd += [f'-b {bot}' for bot in options.bots]
   if options.revision:
-    cmd.append('-r %s' % options.revision)
-  benchmarks = ['"%s"' % benchmark for benchmark in options.benchmarks]
+    cmd.append(f'-r {options.revision}')
+  benchmarks = [f'"{benchmark}"' for benchmark in options.benchmarks]
   cmd.append('-p \'testfilter=[%s]\'' % ','.join(benchmarks))
   if options.extra_flags:
     cmd.append('-p \'extra_flags="%s"\'' % options.extra_flags)
@@ -111,7 +115,7 @@ def main():
     cmd.append('-p confidence_level=%f' % options.confidence_level)
   if options.verbose:
     cmd.append('-vv')
-    print('Running %s' % ' '.join(cmd))
+    print(f"Running {' '.join(cmd)}")
   subprocess.check_call(' '.join(cmd), shell=True, cwd=V8_BASE)
 
 if __name__ == '__main__':  # pragma: no cover

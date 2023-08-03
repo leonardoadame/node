@@ -44,26 +44,23 @@ def ColorText(opts, text):
     result = result.replace("$RED", "")
     result = result.replace("$GREEN", "")
     result = result.replace("$BOLD", "")
+  elif opts.html:
+    result = text.replace("$RESET", "</font></b>")
+    result = result.replace("$BLUE", "<font COLOR=\"0000DD\">")
+    result = result.replace("$RED", "<font COLOR=\"DD0000\">")
+    result = result.replace("$GREEN", "<font COLOR=\"00DD00\">")
+    result = result.replace("$BOLD", "<b>")
   else:
-    if opts.html:
-      result = text.replace("$RESET", "</font></b>")
-      result = result.replace("$BLUE", "<font COLOR=\"0000DD\">")
-      result = result.replace("$RED", "<font COLOR=\"DD0000\">")
-      result = result.replace("$GREEN", "<font COLOR=\"00DD00\">")
-      result = result.replace("$BOLD", "<b>")
-    else:
-      result = text.replace("$RESET", RESET_SEQ)
-      result = result.replace("$BLUE", BLUE_SEQ)
-      result = result.replace("$RED", RED_SEQ)
-      result = result.replace("$GREEN", GREEN_SEQ)
-      result = result.replace("$BOLD", BOLD_SEQ)
+    result = text.replace("$RESET", RESET_SEQ)
+    result = result.replace("$BLUE", BLUE_SEQ)
+    result = result.replace("$RED", RED_SEQ)
+    result = result.replace("$GREEN", GREEN_SEQ)
+    result = result.replace("$BOLD", BOLD_SEQ)
   return result
 
 def NormalizedSigmaToString(normalized_sigma):
   assert normalized_sigma >= 0
-  if normalized_sigma < PROBABILITY_CONSIDERED_SIGNIFICANT:
-    return "|"
-  return "S"
+  return "|" if normalized_sigma < PROBABILITY_CONSIDERED_SIGNIFICANT else "S"
 
 def ComputeZ(baseline_avg, baseline_sigma, mean, n):
   if baseline_sigma == 0:
@@ -92,9 +89,7 @@ def ComputeProbability(z):
     return 0.08
   if z > 1.644853: # p 0.050: two sided < 0.10
     return 0.09
-  if z > 1.281551: # p 0.100: two sided < 0.20
-    return 0.10
-  return 0.20 # two sided p >= 0.20
+  return 0.10 if z > 1.281551 else 0.20
 
 def PercentColor(change_percent, flakyness):
   result = ""
@@ -114,10 +109,7 @@ def ProcessOneResultLine(opts, suite, testname, time, sigma, num, baselines):
   time = float(time)
   sigma = float(sigma)
   num = int(num)
-  if testname in suite_names:
-    base_color = "$BOLD"
-  else:
-    base_color = ""
+  base_color = "$BOLD" if testname in suite_names else ""
   if opts.html:
     line_out = ("<tr><td>%s%s$RESET</td><td>%s%8.1f$RESET</td>" %
                 (base_color, testname, base_color, time))
@@ -158,27 +150,22 @@ def ProcessOneResultLine(opts, suite, testname, time, sigma, num, baselines):
               (base_color, raw_score, sigma_string,
                percent_color, compare_score))
     if not found:
-      if opts.html:
-        line_out += "<td></td><td></td>"
-      else:
-        line_out += "|          |        "
+      line_out += "<td></td><td></td>" if opts.html else "|          |        "
   if opts.html:
     line_out += "</tr>"
   print(ColorText(opts, line_out))
 
 def PrintSeparator(opts, baselines, big):
-  if not opts.html:
-    if big:
-      separator = "==================================================="
-    else:
-      separator = "---------------------------------------------------"
-    for baseline in baselines:
-      if big:
-        separator += "+==========+========"
-      else:
-        separator += "+----------+--------"
-    separator += "+"
-    print(separator)
+  if opts.html:
+    return
+  if big:
+    separator = "==================================================="
+  else:
+    separator = "---------------------------------------------------"
+  for _ in baselines:
+    separator += "+==========+========" if big else "+----------+--------"
+  separator += "+"
+  print(separator)
 
 def ProcessResults(opts, results, baselines):
   for suite in suite_names:
@@ -228,13 +215,10 @@ def CompareFiles(opts, args):
   for baseline in baselines:
     (baseline_name, baseline_results) = baseline
     if opts.html:
-      header += ("<th>%s</th><th>%s</th>") % (baseline_name[0:7], "%")
+      header += f"<th>{baseline_name[:7]}</th><th>%</th>"
     else:
-      header += "| %8s | %6s " % (baseline_name[0:7], "%")
-  if opts.html:
-    header += "</tr>\n"
-  else:
-    header += "|"
+      header += "| %8s | %6s " % (baseline_name[:7], "%")
+  header += "</tr>\n" if opts.html else "|"
   print(header)
   PrintSeparator(opts, baselines, True)
   if opts.filename:
@@ -246,22 +230,21 @@ def CompareFiles(opts, args):
 
 if __name__ == '__main__':
   parser = OptionParser(usage=__doc__)
-  parser.add_option("-f", "--filename", dest="filename",
-                    help="Specifies the filename for the results to "\
-"compare to the baselines rather than reading from stdin.")
-  parser.add_option("-b", "--baselines", dest="baselines",
-                    help="Specifies a directory of baseline files to "\
-"compare against.")
-  parser.add_option("-n", "--no-color", action="store_true",
-                    dest="no_color", default=False,
-                    help="Generates output without escape codes that "\
-"add color highlights.")
+    parser.add_option("-f", "--filename", dest="filename",
+                      help="Specifies the filename for the results to "\
+  "compare to the baselines rather than reading from stdin.")
+    parser.add_option("-b", "--baselines", dest="baselines",
+                      help="Specifies a directory of baseline files to "\
+  "compare against.")
+    parser.add_option("-n", "--no-color", action="store_true",
+                      dest="no_color", default=False,
+                      help="Generates output without escape codes that "\
+  "add color highlights.")
   parser.add_option("--html", action="store_true",
                     dest="html", default=False,
                     help="Generates output as a HTML table ")
   (opts, args) = parser.parse_args()
   if opts.baselines:
-    args.extend(map(lambda x: (opts.baselines + "/" + x),
-                    (os.listdir(opts.baselines))))
+    args.extend(map(lambda x: f"{opts.baselines}/{x}", os.listdir(opts.baselines)))
   args = reversed(sorted(args))
   CompareFiles(opts, args)

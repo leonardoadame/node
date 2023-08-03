@@ -54,7 +54,7 @@ class NodeType(type):
     inheritance.  fields and attributes from the parent class are
     automatically forwarded to the child."""
 
-    def __new__(mcs, name, bases, d):  # type: ignore
+    def __new__(cls, name, bases, d):  # type: ignore
         for attr in "fields", "attributes":
             storage = []
             storage.extend(getattr(bases[0] if bases else object, attr, ()))
@@ -63,7 +63,7 @@ class NodeType(type):
             assert len(storage) == len(set(storage)), "layout conflict"
             d[attr] = tuple(storage)
         d.setdefault("abstract", False)
-        return type.__new__(mcs, name, bases, d)
+        return type.__new__(cls, name, bases, d)
 
 
 class EvalContext:
@@ -220,8 +220,8 @@ class Node(metaclass=NodeType):
         todo = deque([self])
         while todo:
             node = todo.popleft()
-            if "lineno" in node.attributes:
-                if node.lineno is None or override:
+            if node.lineno is None or override:
+                if "lineno" in node.attributes:
                     node.lineno = lineno
             todo.extend(node.iter_child_nodes())
         return self
@@ -613,9 +613,7 @@ class TemplateData(Literal):
         eval_ctx = get_eval_context(self, eval_ctx)
         if eval_ctx.volatile:
             raise Impossible()
-        if eval_ctx.autoescape:
-            return Markup(self.data)
-        return self.data
+        return Markup(self.data) if eval_ctx.autoescape else self.data
 
 
 class Tuple(Literal):
@@ -633,10 +631,7 @@ class Tuple(Literal):
         return tuple(x.as_const(eval_ctx) for x in self.items)
 
     def can_assign(self) -> bool:
-        for item in self.items:
-            if not item.can_assign():
-                return False
-        return True
+        return all(item.can_assign() for item in self.items)
 
 
 class List(Literal):
@@ -727,7 +722,7 @@ def args_as_const(
 
     if node.dyn_kwargs is not None:
         try:
-            kwargs.update(node.dyn_kwargs.as_const(eval_ctx))
+            kwargs |= node.dyn_kwargs.as_const(eval_ctx)
         except Exception as e:
             raise Impossible() from e
 
@@ -886,9 +881,7 @@ class Slice(Expr):
         eval_ctx = get_eval_context(self, eval_ctx)
 
         def const(obj: t.Optional[Expr]) -> t.Optional[t.Any]:
-            if obj is None:
-                return None
-            return obj.as_const(eval_ctx)
+            return None if obj is None else obj.as_const(eval_ctx)
 
         return slice(const(self.start), const(self.stop), const(self.step))
 
@@ -1106,9 +1099,7 @@ class MarkSafeIfAutoescape(Expr):
         if eval_ctx.volatile:
             raise Impossible()
         expr = self.expr.as_const(eval_ctx)
-        if eval_ctx.autoescape:
-            return Markup(expr)
-        return expr
+        return Markup(expr) if eval_ctx.autoescape else expr
 
 
 class ContextReference(Expr):

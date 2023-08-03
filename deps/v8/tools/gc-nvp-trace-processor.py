@@ -73,25 +73,24 @@ class Item(object):
     self.title = title
     self.axis = axis
     self.props = keywords
-    if type(field) is list:
-      self.field = field
-    else:
-      self.field = [field]
+    self.field = field if type(field) is list else [field]
 
   def fieldrefs(self):
     return self.field
 
   def to_gnuplot(self, context):
-    args = ['"%s"' % context.datafile,
-            'using %s' % context.format_fieldref(self.field),
-            'title "%s"' % self.title,
-            'axis %s' % self.axis]
+    args = [
+        f'"{context.datafile}"',
+        f'using {context.format_fieldref(self.field)}',
+        f'title "{self.title}"',
+        f'axis {self.axis}',
+    ]
     if 'style' in self.props:
-      args.append('with %s' % self.props['style'])
+      args.append(f"with {self.props['style']}")
     if 'lc' in self.props:
-      args.append('lc rgb "%s"' % self.props['lc'])
+      args.append(f"""lc rgb "{self.props['lc']}\"""")
     if 'fs' in self.props:
-      args.append('fs %s' % self.props['fs'])
+      args.append(f"fs {self.props['fs']}")
     return ' '.join(args)
 
 class Plot(object):
@@ -109,7 +108,7 @@ class Set(object):
     self.value = value
 
   def to_gnuplot(self, ctx):
-    return 'set ' + self.value
+    return f'set {self.value}'
 
   def fieldrefs(self):
     return []
@@ -140,7 +139,7 @@ def is_y2_used(plot):
   for subplot in plot:
     if isinstance(subplot, Plot):
       for item in subplot.items:
-        if item.axis == x1y2 or item.axis == x2y2:
+        if item.axis in [x1y2, x2y2]:
           return True
   return False
 
@@ -163,22 +162,18 @@ def generate_script_and_datafile(plot, trace, datafile, output):
   generate_datafile(datafile, trace, fields)
   script = [
       'set terminal png',
-      'set output "%s"' % output,
+      f'set output "{output}"',
       'set autoscale',
       'set ytics nomirror',
       'set xtics nomirror',
-      'set key below'
+      'set key below',
   ]
 
   if is_y2_used(plot):
-    script.append('set autoscale y2')
-    script.append('set y2tics')
-
+    script.extend(('set autoscale y2', 'set y2tics'))
   context = Context(datafile, field_to_index)
 
-  for item in plot:
-    script.append(item.to_gnuplot(context))
-
+  script.extend(item.to_gnuplot(context) for item in plot)
   return '\n'.join(script)
 
 def plot_all(plots, trace, prefix):
@@ -188,7 +183,7 @@ def plot_all(plots, trace, prefix):
     outfilename = "%s_%d.png" % (prefix, len(charts))
     charts.append(outfilename)
     script = generate_script_and_datafile(plot, trace, '~datafile', outfilename)
-    print('Plotting %s...' % outfilename)
+    print(f'Plotting {outfilename}...')
     gnuplot(script)
 
   return charts
@@ -203,9 +198,7 @@ def other_scope(r):
   return r['pause'] - r['mark'] - r['sweep'] - r['external']
 
 def scavenge_scope(r):
-  if r['gc'] == 's':
-    return r['pause'] - r['external']
-  return 0
+  return r['pause'] - r['external'] if r['gc'] == 's' else 0
 
 
 def real_mutator(r):
@@ -298,10 +291,7 @@ def process_trace(filename):
     n = len(trace)
     total = calc_total(trace, field)
     max = calc_max(trace, field)
-    if n > 0:
-      avg = total / n
-    else:
-      avg = 0
+    avg = total / n if n > 0 else 0
     if n > 1:
       dev = math.sqrt(freduce(lambda t,r: t + (r - avg) ** 2, field, trace, 0) /
                       (n - 1))
@@ -326,19 +316,16 @@ def process_trace(filename):
     total_gc = calc_total(trace, 'pause')
     if total_gc == 0:
       return
-    out.write('GC %s Throughput (after): %s / %s ms = %s/ms<br/>' %
-              (name,
-               HumanReadable(total_live_after),
-               total_gc,
-               HumanReadable(total_live_after / total_gc)))
-    out.write('GC %s Throughput (before): %s / %s ms = %s/ms<br/>' %
-              (name,
-               HumanReadable(total_live_before),
-               total_gc,
-               HumanReadable(total_live_before / total_gc)))
+    out.write(
+        f'GC {name} Throughput (after): {HumanReadable(total_live_after)} / {total_gc} ms = {HumanReadable(total_live_after / total_gc)}/ms<br/>'
+    )
+    out.write(
+        f'GC {name} Throughput (before): {HumanReadable(total_live_before)} / {total_gc} ms = {HumanReadable(total_live_before / total_gc)}/ms<br/>'
+    )
 
 
-  with open(filename + '.html', 'w') as out:
+
+  with open(f'{filename}.html', 'w') as out:
     out.write('<html><body>')
     out.write('<table>')
     out.write('<tr><td>Phase</td><td>Count</td><td>Time (ms)</td>')
@@ -358,13 +345,13 @@ def process_trace(filename):
     throughput('OLDSPACE', globalgcs)
     out.write('<br/>')
     for chart in charts:
-      out.write('<img src="%s">' % chart)
+      out.write(f'<img src="{chart}">')
       out.write('</body></html>')
 
-  print("%s generated." % (filename + '.html'))
+  print(f"{filename}.html generated.")
 
 if len(sys.argv) != 2:
-  print("Usage: %s <GC-trace-filename>" % sys.argv[0])
+  print(f"Usage: {sys.argv[0]} <GC-trace-filename>")
   sys.exit(1)
 
 process_trace(sys.argv[1])

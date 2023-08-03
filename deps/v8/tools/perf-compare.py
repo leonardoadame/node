@@ -69,9 +69,7 @@ class Statistics:
       return 0.08
     if z > 1.644853: # p 0.050: two sided < 0.10
       return 0.09
-    if z > 1.281551: # p 0.100: two sided < 0.20
-      return 0.10
-    return 0.20 # two sided p >= 0.20
+    return 0.10 if z > 1.281551 else 0.20
 
 
 class ResultsDiff:
@@ -102,7 +100,7 @@ class BenchmarkResult:
 
   def Compare(self, other):
     if self.units_ != other.units_:
-      print ("Incompatible units: %s and %s" % (self.units_, other.units_))
+      print(f"Incompatible units: {self.units_} and {other.units_}")
       sys.exit(1)
 
     significant = False
@@ -174,7 +172,7 @@ class BenchmarkSuite:
 
   def getBenchmark(self, benchmark_name):
     benchmark_object = self.benchmarks_.get(benchmark_name)
-    if benchmark_object == None:
+    if benchmark_object is None:
       benchmark_object = Benchmark(benchmark_name)
       self.benchmarks_[benchmark_name] = benchmark_object
     return benchmark_object
@@ -200,7 +198,7 @@ class ResultTableRenderer:
       print(string_data)
 
   def bold(self, data):
-    return "<b>%s</b>" % data
+    return f"<b>{data}</b>"
 
   def red(self, data):
     return "<font color=\"red\">%s</font>" % data
@@ -335,8 +333,8 @@ table tr th :last-child, table tr td :last-child {
     self.Print("  <th>Test</th>")
     main_run = None
     for run_name in run_names:
-      self.Print("  <th>%s</th>" % run_name)
-      if main_run == None:
+      self.Print(f"  <th>{run_name}</th>")
+      if main_run is None:
         main_run = run_name
       else:
         self.Print("  <th>%</th>")
@@ -358,14 +356,14 @@ table tr th :last-child, table tr td :last-child {
 
 
   def PrintResult(self, run):
-    if run == None:
+    if run is None:
       self.PrintEmptyCell()
       return
     self.Print("    <td>%3.1f</td>" % run.result())
 
 
   def PrintComparison(self, run, main_run):
-    if run == None or main_run == None:
+    if run is None or main_run is None:
       self.PrintEmptyCell()
       return
     diff = run.Compare(main_run)
@@ -376,7 +374,7 @@ table tr th :last-child, table tr td :last-child {
       res = self.green(res)
     elif diff.isNotablyNegative():
       res = self.red(res)
-    self.Print("    <td>%s</td>" % res)
+    self.Print(f"    <td>{res}</td>")
 
 
   def PrintEmptyCell(self):
@@ -384,7 +382,7 @@ table tr th :last-child, table tr td :last-child {
 
 
   def StartTOC(self, title):
-    self.Print("<h1>%s</h1>" % title)
+    self.Print(f"<h1>{title}</h1>")
     self.Print("<ul>")
 
   def FinishTOC(self):
@@ -428,7 +426,7 @@ def Render(args):
         benchmark_name = "/".join(trace["graphs"][1:])
 
         benchmark_suite_object = benchmark_suites.get(suite_name)
-        if benchmark_suite_object == None:
+        if benchmark_suite_object is None:
           benchmark_suite_object = BenchmarkSuite(suite_name)
           benchmark_suites[suite_name] = benchmark_suite_object
 
@@ -457,7 +455,7 @@ def Render(args):
       for run_name in run_names:
         result = benchmark_object.getResult(run_name)
         renderer.PrintResult(result)
-        if main_run == None:
+        if main_run is None:
           main_run = run_name
           main_result = result
         else:
@@ -469,7 +467,7 @@ def Render(args):
   renderer.FlushOutput()
 
 def CommaSeparatedList(arg):
-  return [x for x in arg.split(',')]
+  return list(arg.split(','))
 
 if __name__ == '__main__':
   parser = ArgumentParser(description="Compare perf trybot JSON files and " +

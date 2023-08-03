@@ -33,10 +33,7 @@ class MockTest(object):
         return self.negative
 
     def GetMode(self):
-        if self.strict_mode:
-            return "strict mode"
-
-        return "non-strict mode"
+        return "strict mode" if self.strict_mode else "non-strict mode"
 
 class MockResult(object):
 

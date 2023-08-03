@@ -51,10 +51,8 @@ def GenRandom(length, negative=kRandom):
   s = []
   if negative == kYes or (negative == kRandom and (random.randint(0, 1) == 0)):
     s.append("-")  # 50% chance of negative.
-  s.append("0x")
-  s.append(kChars[random.randint(1, kBase - 1)])  # No leading zero.
-  for i in range(1, length):
-    s.append(kChars[random.randint(0, kBase - 1)])
+  s.extend(("0x", kChars[random.randint(1, kBase - 1)]))
+  s.extend(kChars[random.randint(0, kBase - 1)] for _ in range(1, length))
   s.append("n")
   return "".join(s)
 
@@ -73,9 +71,9 @@ def Format(x):
   while x > 0:
     s = kChars[x % kBase] + s
     x = x / kBase
-  s = "0x" + s + "n"
+  s = f"0x{s}n"
   if negative:
-    s = "-" + s
+    s = f"-{s}"
   assert Parse(s) == original
   return s
 
@@ -91,9 +89,7 @@ class TestGenerator(object):
     return TEST_HEADER
 
   def EmitData(self, count):
-    s = []
-    for i in range(count):
-      s.append(self.EmitOne())
+    s = [self.EmitOne() for _ in range(count)]
     return "var data = [" + ", ".join(s) + "];"
 
   def EmitTestBody(self):
@@ -110,8 +106,7 @@ class TestGenerator(object):
       with open(path, "w") as f:
         f.write(self.EmitData(count))
         f.write(self.EmitTestBody())
-      return subprocess.call("%s %s" % (binary, path),
-                             shell=True)
+      return subprocess.call(f"{binary} {path}", shell=True)
     finally:
       os.close(fd)
       os.remove(path)
@@ -249,16 +244,14 @@ class Shl(BinaryOp):
 
   def GenerateInputs(self): return self.GenerateInputsInternal(True)
   def GenerateResult(self, a, b):
-    if b < 0: return a >> -b
-    return a << b
+    return a >> -b if b < 0 else a << b
 
 class Sar(Shl):  # Sharing GenerateInputsInternal.
   def GetOpString(self): return ">>"
   def GenerateInputs(self):
     return self.GenerateInputsInternal(False)
   def GenerateResult(self, a, b):
-    if b < 0: return a << -b
-    return a >> b
+    return a << -b if b < 0 else a >> b
 
 class BitAnd(BinaryOp):
   def GetOpString(self): return "&"
@@ -297,7 +290,7 @@ def WrapRunOne(args):
   return RunOne(*args)
 def RunAll(args):
   for op in args.op:
-    for r in range(args.runs):
+    for _ in range(args.runs):
       yield (op, args.num_inputs, args.binary)
 
 def Main():
@@ -327,7 +320,7 @@ def Main():
 
   for op in args.op:
     if op not in OPS.keys() and op != "all":
-      print("Invalid op '%s'. See --help." % op)
+      print(f"Invalid op '{op}'. See --help.")
       return 1
 
   if len(args.op) == 1 and args.op[0] == "all":
@@ -345,7 +338,7 @@ def Main():
       result = result or r
     return result
   else:
-    print("Invalid action '%s'. See --help." % args.action)
+    print(f"Invalid action '{args.action}'. See --help.")
     return 1
 
 if __name__ == "__main__":

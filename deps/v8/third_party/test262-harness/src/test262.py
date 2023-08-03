@@ -82,7 +82,7 @@ def ValidateOptions(options):
   if not options.command:
     ReportError("A --command must be specified.")
   if not path.exists(options.tests):
-    ReportError("Couldn't find test path '%s'" % options.tests)
+    ReportError(f"Couldn't find test path '{options.tests}'")
 
 
 placeHolderPattern = re.compile(r"\{\{(\w+)\}\}")
@@ -90,7 +90,7 @@ placeHolderPattern = re.compile(r"\{\{(\w+)\}\}")
 
 def IsWindows():
   p = platform.system()
-  return (p == 'Windows') or (p == 'Microsoft')
+  return p in ['Windows', 'Microsoft']
 
 
 class TempFile(object):
@@ -182,8 +182,8 @@ class TestResult(object):
     test_mode = self.case.GetMode()
     testCaseElement = xmlj.Element("testcase")
     testpath = self.TestPathManipulation(test_name)
-    testCaseElement.attrib["classname"] = "%s.%s" % (testpath[0] , testpath[1])
-    testCaseElement.attrib["name"] = "%s %s" % (testpath[2].replace('.','_') , test_mode)
+    testCaseElement.attrib["classname"] = f"{testpath[0]}.{testpath[1]}"
+    testCaseElement.attrib["name"] = f"{testpath[2].replace('.', '_')} {test_mode}"
     if self.HasUnexpectedOutcome():
       failureElement = xmlj.Element("failure")
       out = self.stdout.strip().decode('utf-8')
@@ -200,10 +200,7 @@ class TestResult(object):
     testcase = testdirlist.pop()
     testclass = testdirlist.pop()
     testclass = testclass.replace('.','_')
-    if len(testdirlist) >= 1:
-       testpackage = testdirlist.pop(0)
-    else:
-       testpackage = testclass
+    testpackage = testdirlist.pop(0) if len(testdirlist) >= 1 else testclass
     return(testpackage,testclass,testcase)
 
   def HasFailed(self):
@@ -221,9 +218,7 @@ class TestResult(object):
        return self.HasFailed()
 
   def GetErrorOutput(self):
-    if len(self.stderr) != 0:
-      return self.stderr
-    return self.stdout
+    return self.stderr if len(self.stderr) != 0 else self.stdout
 
 
 class TestCase(object):
@@ -233,9 +228,8 @@ class TestCase(object):
     self.name = name
     self.full_path = full_path
     self.strict_mode = strict_mode
-    f = open(self.full_path)
-    self.contents = f.read()
-    f.close()
+    with open(self.full_path) as f:
+      self.contents = f.read()
     testRecord = parseTestRecord(self.contents, name)
     self.test = testRecord["test"]
     del testRecord["test"]
@@ -250,9 +244,7 @@ class TestCase(object):
     return re.search(neg, stderr)
 
   def GetNegative(self):
-    if not self.IsNegative():
-        return None
-    return self.testRecord["negative"]
+    return None if not self.IsNegative() else self.testRecord["negative"]
 
   def GetNegativeType(self):
     negative = self.GetNegative()
@@ -266,10 +258,7 @@ class TestCase(object):
     return path.join(*self.name)
 
   def GetMode(self):
-    if self.strict_mode:
-      return "strict mode"
-    else:
-      return "non-strict mode"
+    return "strict mode" if self.strict_mode else "non-strict mode"
 
   def GetPath(self):
     return self.name
@@ -290,9 +279,7 @@ class TestCase(object):
     return 'async' in self.testRecord
 
   def GetIncludeList(self):
-    if self.testRecord.get('includes'):
-      return self.testRecord['includes']
-    return []
+    return self.testRecord['includes'] if self.testRecord.get('includes') else []
 
   def GetAdditionalIncludes(self):
     return '\n'.join([self.suite.GetInclude(include) for include in self.GetIncludeList()])
@@ -333,10 +320,7 @@ class TestCase(object):
     return placeHolderPattern.sub(GetParameter, template)
 
   def Execute(self, command):
-    if IsWindows():
-      args = '%s' % command
-    else:
-      args = command.split(" ")
+    args = f'{command}' if IsWindows() else command.split(" ")
     stdout = TempFile(prefix="test262-out-")
     stderr = TempFile(prefix="test262-err-")
     try:
@@ -380,7 +364,7 @@ class TestCase(object):
     phase = self.GetNegativePhase()
 
     if phase not in [None, "early", "runtime"]:
-        raise TypeError("Invalid value for negative phase: " + phase)
+      raise TypeError(f"Invalid value for negative phase: {phase}")
 
     if not flags:
         return
@@ -413,10 +397,7 @@ class ProgressIndicator(object):
 
 
 def MakePlural(n):
-  if (n == 1):
-    return (n, "")
-  else:
-    return (n, "s")
+  return (n, "") if (n == 1) else (n, "s")
 
 def PercentFormat(partial, total):
   return "%i test%s (%.1f%%)" % (MakePlural(partial) +
@@ -449,24 +430,18 @@ class TestSuite(object):
     return path.endswith('.js')
 
   def ShouldRun(self, rel_path, tests):
-    if len(tests) == 0:
-      return True
-    for test in tests:
-      if test in rel_path:
-        return True
-    return False
+    return True if len(tests) == 0 else any(test in rel_path for test in tests)
 
   def GetInclude(self, name):
-    if not name in self.include_cache:
+    if name not in self.include_cache:
       static = path.join(self.lib_root, name)
       if path.exists(static):
-        f = open(static)
-        contents = stripHeader(f.read())
-        contents = re.sub(r'\r\n', '\n', contents)
-        self.include_cache[name] = contents + "\n"
-        f.close()
+        with open(static) as f:
+          contents = stripHeader(f.read())
+          contents = re.sub(r'\r\n', '\n', contents)
+          self.include_cache[name] = contents + "\n"
       else:
-        ReportError("Can't find: " + static)
+        ReportError(f"Can't find: {static}")
     return self.include_cache[name]
 
   def EnumerateTests(self, tests):
@@ -595,17 +570,16 @@ class TestSuite(object):
     mode = result.case.GetMode()
     if result.HasUnexpectedOutcome():
       if result.case.IsNegative():
-          self.logf.write("=== %s was expected to fail in %s, but didn't === \n" % (name, mode))
-          self.logf.write("--- expected error: %s ---\n" % result.case.GetNegativeType())
-          result.WriteOutput(self.logf)
+        self.logf.write("=== %s was expected to fail in %s, but didn't === \n" % (name, mode))
+        self.logf.write("--- expected error: %s ---\n" % result.case.GetNegativeType())
       else:
-          self.logf.write("=== %s failed in %s === \n" % (name, mode))
-          result.WriteOutput(self.logf)
+        self.logf.write("=== %s failed in %s === \n" % (name, mode))
+      result.WriteOutput(self.logf)
       self.logf.write("===\n")
     elif result.case.IsNegative():
        self.logf.write("%s failed in %s as expected \n" % (name, mode))
     else:
-       self.logf.write("%s passed in %s \n" % (name, mode))
+      self.logf.write("%s passed in %s \n" % (name, mode))
 
   def Print(self, tests):
     cases = self.EnumerateTests(tests)

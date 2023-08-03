@@ -32,11 +32,7 @@ class Symbols:
         self, parent: t.Optional["Symbols"] = None, level: t.Optional[int] = None
     ) -> None:
         if level is None:
-            if parent is None:
-                level = 0
-            else:
-                level = parent.level + 1
-
+            level = 0 if parent is None else parent.level + 1
         self.level: int = level
         self.parent = parent
         self.refs: t.Dict[str, str] = {}
@@ -60,19 +56,13 @@ class Symbols:
         if target in self.loads:
             return self.loads[target]
 
-        if self.parent is not None:
-            return self.parent.find_load(target)
-
-        return None
+        return self.parent.find_load(target) if self.parent is not None else None
 
     def find_ref(self, name: str) -> t.Optional[str]:
         if name in self.refs:
             return self.refs[name]
 
-        if self.parent is not None:
-            return self.parent.find_ref(name)
-
-        return None
+        return self.parent.find_ref(name) if self.parent is not None else None
 
     def ref(self, name: str) -> str:
         rv = self.find_ref(name)

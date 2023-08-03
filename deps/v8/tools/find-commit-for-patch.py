@@ -58,7 +58,7 @@ def CountMatchingFiles(commit, files):
   matched_files = 0
   # Calling out to git once and parsing the result Python-side is faster
   # than calling 'git ls-tree' for every file.
-  cmd = ["git", "ls-tree", "-r", commit] + [f for f in files]
+  cmd = ["git", "ls-tree", "-r", commit] + list(files)
   output = subprocess.check_output(cmd)
   for line in output.splitlines():
     # 100644 blob c6d5daaa7d42e49a653f9861224aad0a0244b944      src/objects.cc
@@ -77,7 +77,7 @@ def FindFirstMatchingCommit(start, files, limit, verbose):
     if verbose: print("Commit %s matched %d files" % (commit, matched_files))
     if matched_files == num_files:
       return commit
-    commit = GetGitCommitHash("%s^" % commit)
+    commit = GetGitCommitHash(f"{commit}^")
   print("Sorry, no matching commit found. "
         "Try running 'git fetch', specifying the correct --branch, "
         "and/or setting a higher --limit.")
@@ -89,7 +89,7 @@ if __name__ == "__main__":
   files = FindFilesInPatch(args.patch_file)
   commit = FindFirstMatchingCommit(args.branch, files, args.limit, args.verbose)
   if args.verbose:
-    print(">>> Matching commit: %s" % commit)
+    print(f">>> Matching commit: {commit}")
     print(subprocess.check_output(["git", "log", "-1", commit]))
     print(">>> Kthxbai.")
   else:

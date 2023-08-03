@@ -27,24 +27,27 @@ import subprocess
 import SocketServer # TODO(leszeks): python 3 compatibility
 
 def CreateFileHandlerClass(root_dirs, verbose):
+
+
+
   class FileHandler(SocketServer.BaseRequestHandler):
     def handle(self):
       data = self.request.recv(1024);
       while data[-1] != "\0":
         data += self.request.recv(1024);
 
-      filename = data[0:-1]
+      filename = data[:-1]
 
       try:
         filename = os.path.abspath(filename)
 
         if not any(filename.startswith(root) for root in root_dirs):
-          raise Exception("{} not in roots {}".format(filename, root_dirs))
+          raise Exception(f"{filename} not in roots {root_dirs}")
         if not os.path.isfile(filename):
-          raise Exception("{} is not a file".format(filename))
+          raise Exception(f"{filename} is not a file")
 
         if verbose:
-          sys.stdout.write("Serving {}\r\n".format(os.path.relpath(filename)))
+          sys.stdout.write(f"Serving {os.path.relpath(filename)}\r\n")
 
         with open(filename) as f:
           contents = f.read();
@@ -53,9 +56,9 @@ def CreateFileHandlerClass(root_dirs, verbose):
 
       except Exception as e:
         if verbose:
-          sys.stderr.write(
-            "Request failed ({})\n".format(e).replace('\n','\r\n'))
+          sys.stderr.write(f"Request failed ({e})\n".replace('\n', '\r\n'))
         self.request.sendall(struct.pack("!i", -1))
+
 
   return FileHandler
 
@@ -86,7 +89,7 @@ def TransferD8ToDevice(adb, build_dir, device_d8_dir, verbose):
     if line.endswith(": FAILED"):
       filename = line[:-len(": FAILED")]
       if verbose:
-        print("Updating {}...".format(filename))
+        print(f"Updating {filename}...")
       subprocess.check_call([
         adb, "push",
         os.path.join(build_dir, filename),
@@ -96,24 +99,20 @@ def TransferD8ToDevice(adb, build_dir, device_d8_dir, verbose):
 
 def AdbForwardDeviceToLocal(adb, device_port, server_port, verbose):
   if verbose:
-    print("Forwarding device:{} to localhost:{}...".format(
-      device_port, server_port))
+    print(f"Forwarding device:{device_port} to localhost:{server_port}...")
 
-  subprocess.check_call([
-    adb, "reverse",
-    "tcp:{}".format(device_port),
-    "tcp:{}".format(server_port)
-  ])
+  subprocess.check_call(
+      [adb, "reverse", f"tcp:{device_port}", f"tcp:{server_port}"])
 
 
 def AdbRunD8(adb, device_d8_dir, device_port, d8_args, verbose):
   # Single-quote the arguments to d8, and concatenate them into a string.
-  d8_arg_str = " ".join("'{}'".format(a) for a in d8_args)
-  d8_arg_str = "--read-from-tcp-port='{}' ".format(device_port) + d8_arg_str
+  d8_arg_str = " ".join(f"'{a}'" for a in d8_args)
+  d8_arg_str = f"--read-from-tcp-port='{device_port}' {d8_arg_str}"
 
   # Don't use os.path.join for d8 because we care about the device's os, not
   # the host os.
-  d8_str = "{}/d8 {}".format(device_d8_dir, d8_arg_str)
+  d8_str = f"{device_d8_dir}/d8 {d8_arg_str}"
 
   if sys.stdout.isatty():
     # Run adb shell with -t to have a tty if we run d8 without a script.
@@ -122,7 +121,7 @@ def AdbRunD8(adb, device_d8_dir, device_port, d8_args, verbose):
     cmd = [adb, "shell", d8_str]
 
   if verbose:
-    print("Running {}".format(" ".join(cmd)))
+    print(f'Running {" ".join(cmd)}')
   return subprocess.call(cmd)
 
 
@@ -175,10 +174,10 @@ def Main():
     elif arg == "--":
       arg_index += 1
       break
-    elif arg == "-h" or arg == "--help":
+    elif arg in ["-h", "--help"]:
       PrintHelp(sys.stdout)
       return 0
-    elif arg == "-v" or arg == "--verbose":
+    elif arg in ["-v", "--verbose"]:
       verbose = True
 
     elif arg == "--device-dir":
@@ -194,7 +193,7 @@ def Main():
       root_dirs.append(arg[len("--extra-root-dir="):])
 
     else:
-      print("ERROR: Unrecognised option: {}".format(arg))
+      print(f"ERROR: Unrecognised option: {arg}")
       PrintUsage(sys.stderr)
       return 1
 

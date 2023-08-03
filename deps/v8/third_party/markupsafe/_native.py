@@ -32,9 +32,7 @@ def escape_silent(s):
     """Like :func:`escape` but converts `None` into an empty
     markup string.
     """
-    if s is None:
-        return Markup()
-    return escape(s)
+    return Markup() if s is None else escape(s)
 
 
 def soft_unicode(s):

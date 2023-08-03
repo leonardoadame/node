@@ -41,14 +41,13 @@ if __name__ == '__main__':
   with open(log_file, 'r') as f:
     lines = f.readlines()
 
-  d8_line = re.search(',\"(.*d8)', ''.join(lines))
-  if d8_line:
-    d8_exec = d8_line.group(1)
+  if d8_line := re.search(',\"(.*d8)', ''.join(lines)):
+    d8_exec = d8_line[1]
     if not is_file_executable(d8_exec):
-      print('d8 binary path found in {} is not executable.'.format(log_file))
+      print(f'd8 binary path found in {log_file} is not executable.')
       sys.exit(-1)
   else:
-    print('No d8 binary path found in {}.'.format(log_file))
+    print(f'No d8 binary path found in {log_file}.')
     sys.exit(-1)
 
   args = [d8_exec] + ['--module'] + JS_FILES + ['--'] + args

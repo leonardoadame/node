@@ -36,9 +36,7 @@ class Log2Bucket:
   def value_to_bucket(self, value):
     index = int(log(value, 2))
     index -= self.start
-    if index < 0:
-      index = 0
-    return index
+    return max(index, 0)
 
   def bucket_to_range(self, bucket):
     if bucket == 0:
@@ -70,10 +68,9 @@ class Histogram:
         keys.pop(0)
         ret.append("  [{0},{1}[: {2}".format(
           str(min_value), str(max_value), self.histogram[i]))
-      else:
-        if self.fill_empty:
-          ret.append("  [{0},{1}[: {2}".format(
-            str(min_value), str(max_value), 0))
+      elif self.fill_empty:
+        ret.append("  [{0},{1}[: {2}".format(
+          str(min_value), str(max_value), 0))
     return "\n".join(ret)
 
 
@@ -98,9 +95,7 @@ class Category:
     return max(self.values)
 
   def avg(self):
-    if len(self.values) == 0:
-      return 0.0
-    return sum(self.values) / len(self.values)
+    return 0.0 if len(self.values) == 0 else sum(self.values) / len(self.values)
 
   def empty(self):
     return len(self.values) == 0
@@ -116,21 +111,19 @@ class Category:
     return ret
 
   def __str__(self):
+    ret = [self.key]
     if self.csv:
-      ret = [self.key]
-      ret.append(len(self.values))
-      ret.append(self.min())
-      ret.append(self.max())
-      ret.append(self.avg())
+      ret.extend((len(self.values), self.min(), self.max(), self.avg()))
       ret = [str(x) for x in ret]
       return ",".join(ret)
     else:
-      ret = [self.key]
       ret.append("  len: {0}".format(len(self.values)))
       if len(self.values) > 0:
-        ret.append("  min: {0}".format(self.min()))
-        ret.append("  max: {0}".format(self.max()))
-        ret.append("  avg: {0}".format(self.avg()))
+        ret.extend((
+            "  min: {0}".format(self.min()),
+            "  max: {0}".format(self.max()),
+            "  avg: {0}".format(self.avg()),
+        ))
         if self.histogram:
           ret.append(str(self.histogram))
         if self.percentiles:

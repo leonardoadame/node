@@ -28,20 +28,22 @@ HEADER = """// Copyright 2016 the V8 project authors. All rights reserved.
 
 def main():
   if not os.path.isfile(INPUT):
-    sys.exit("Input file {} does not exist; run this script in a v8 checkout."
-             .format(INPUT))
+    sys.exit(
+        f"Input file {INPUT} does not exist; run this script in a v8 checkout."
+    )
   if not os.path.isfile(OUTPUT):
-    sys.exit("Output file {} does not exist; run this script in a v8 checkout."
-             .format(OUTPUT))
+    sys.exit(
+        f"Output file {OUTPUT} does not exist; run this script in a v8 checkout."
+    )
   regexp = re.compile('^#define (\w+)')
   seen = set()
-  with open(INPUT, 'r') as infile, open(OUTPUT, 'w') as outfile:
+  with (open(INPUT, 'r') as infile, open(OUTPUT, 'w') as outfile):
     outfile.write(HEADER)
     for line in infile:
       match = regexp.match(line)
-      if match and match.group(1) not in seen:
-        seen.add(match.group(1))
-        outfile.write('#undef {}\n'.format(match.group(1)))
+      if match and match[1] not in seen:
+        seen.add(match[1])
+        outfile.write(f'#undef {match[1]}\n')
 
 if __name__ == "__main__":
   main()

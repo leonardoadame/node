@@ -70,10 +70,8 @@ class TestSuite(testsuite.TestSuite):
 class TestCase(testcase.TestCase):
   def _get_suite_flags(self):
     return (
-        ["--gtest_filter=" + self.path] +
-        ["--gtest_random_seed=%s" % self.random_seed] +
-        ["--gtest_print_time=0"]
-    )
+        [f"--gtest_filter={self.path}"] +
+        [f"--gtest_random_seed={self.random_seed}"]) + ["--gtest_print_time=0"]
 
   def get_shell(self):
     return "wasm_api_tests"

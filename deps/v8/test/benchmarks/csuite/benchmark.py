@@ -20,7 +20,7 @@ import sys
 import time
 
 def GeometricMean(numbers):
-  log = sum([math.log(n) for n in numbers])
+  log = sum(math.log(n) for n in numbers)
   return math.pow(math.e, log / len(numbers))
 
 
@@ -64,7 +64,7 @@ class BenchmarkSuite(object):
           sum((x - mean) ** 2 for x in results) / sigma_divisor)
       self.numresult[test] = len(results)
       if opts.verbose:
-        if not test in ["Octane"]:
+        if test not in ["Octane"]:
           print("%s,%.1f,%.2f,%d" %
               (test, self.avgresult[test],
                self.sigmaresult[test], self.numresult[test]))
@@ -78,14 +78,8 @@ class BenchmarkSuite(object):
       self.num = self.numresult[test]
 
   def ComputeScoreV8Octane(self, name):
-    # The score for the run is stored with the form
-    # "Octane-octane2.1(Score): <score>"
-    found_name = ''
-    for s in self.avgresult.keys():
-      if re.search("^Octane", s):
-        found_name = s
-        break
-
+    found_name = next(
+        (s for s in self.avgresult.keys() if re.search("^Octane", s)), '')
     self.score = self.avgresult[found_name]
     self.sigma = 0
     for test in self.tests:
@@ -99,7 +93,7 @@ class BenchmarkSuite(object):
     elif self.name in self.kGeometricScoreSuites:
       self.ComputeScoreV8Octane(self.name)
     else:
-      print("Don't know how to compute score for suite: '%s'" % self.name)
+      print(f"Don't know how to compute score for suite: '{self.name}'")
 
   def IsBetterThan(self, other):
     if self.name in self.kClassicScoreSuites:
@@ -107,7 +101,7 @@ class BenchmarkSuite(object):
     elif self.name in self.kGeometricScoreSuites:
       return self.score > other.score
     else:
-      print("Don't know how to compare score for suite: '%s'" % self.name)
+      print(f"Don't know how to compare score for suite: '{self.name}'")
 
 
 class BenchmarkRunner(object):
@@ -126,7 +120,7 @@ class BenchmarkRunner(object):
     self.RunCommand()
     # Figure out the suite from the command line (heuristic) or the current
     # working directory.
-    teststr = opts.command.lower() + " " + self.current_directory.lower()
+    teststr = f"{opts.command.lower()} {self.current_directory.lower()}"
     if teststr.find('octane') >= 0:
       suite = 'Octane'
     elif teststr.find('sunspider') >= 0:
@@ -144,7 +138,7 @@ class BenchmarkRunner(object):
       if os.path.exists(outfile) and not self.opts.force:
         continue
       print("run #%d" % i)
-      cmdline = "%s > %s" % (self.opts.command, outfile)
+      cmdline = f"{self.opts.command} > {outfile}"
       subprocess.call(cmdline, shell=True)
       time.sleep(self.opts.sleep)
 
@@ -155,20 +149,18 @@ class BenchmarkRunner(object):
 
     # Kraken or Sunspider?
     g = re.match("(?P<test_name>\w+(-\w+)*)\(RunTime\): (?P<score>\d+) ms\.", \
-        line)
-    if g == None:
+          line)
+    if g is None:
       # Octane?
       g = re.match("(?P<test_name>\w+): (?P<score>\d+)", line)
-      if g == None:
-        g = re.match("Score \(version [0-9]+\): (?P<score>\d+)", line)
-        if g != None:
-          return ('Octane', g.group('score'))
-        else:
-          # Generic?
-          g = re.match("(?P<test_name>\w+)\W+(?P<score>\d+)", line)
-          if g == None:
-            return (None, None)
-    return (g.group('test_name'), g.group('score'))
+    if g is None:
+      g = re.match("Score \(version [0-9]+\): (?P<score>\d+)", line)
+      if g is None:
+        # Generic?
+        g = re.match("(?P<test_name>\w+)\W+(?P<score>\d+)", line)
+      else:
+        return 'Octane', g['score']
+    return (None, None) if g is None else (g['test_name'], g['score'])
 
   def ProcessOutput(self, suitename):
     suite = BenchmarkSuite(suitename)
@@ -216,7 +208,7 @@ if __name__ == '__main__':
   if not opts.cachedir:
     opts.cachedir = cachedir
   if not os.path.exists(opts.cachedir):
-    print("Directory " + opts.cachedir + " is not valid. Aborting.")
+    print(f"Directory {opts.cachedir} is not valid. Aborting.")
     sys.exit(1)
 
   br = BenchmarkRunner(args, os.getcwd(), opts)

@@ -31,6 +31,7 @@ You can run from any place:
   ../../somewhere-strange/csuite.py sunspider compare ./d8-better
 '''
 
+
 # for py2/py3 compatibility
 from __future__ import print_function
 
@@ -60,14 +61,14 @@ if __name__ == '__main__':
     print('Suite must be octane, sunspider or kraken. Aborting.')
     sys.exit(1)
 
-  if mode != 'baseline' and mode != 'compare':
+  if mode not in ['baseline', 'compare']:
     print('mode must be baseline or compare. Aborting.')
     sys.exit(1)
 
   # Set up paths.
   d8_path = os.path.abspath(args[2])
   if not os.path.exists(d8_path):
-    print(d8_path + " is not valid.")
+    print(f"{d8_path} is not valid.")
     sys.exit(1)
 
   csuite_path = os.path.dirname(os.path.abspath(__file__))
@@ -77,16 +78,14 @@ if __name__ == '__main__':
 
   benchmark_py_path = os.path.join(csuite_path, "benchmark.py")
   if not os.path.exists(benchmark_py_path):
-    print("Unable to find benchmark.py in " + csuite_path \
-        + ". Aborting.")
+    print(f"Unable to find benchmark.py in {csuite_path}. Aborting.")
     sys.exit(1)
 
   compare_baseline_py_path = os.path.join(csuite_path,
       "compare-baseline.py")
 
   if not os.path.exists(compare_baseline_py_path):
-    print("Unable to find compare-baseline.py in " + csuite_path \
-        + ". Aborting.")
+    print(f"Unable to find compare-baseline.py in {csuite_path}. Aborting.")
     sys.exit(1)
 
   benchmark_path = os.path.abspath(os.path.join(csuite_path, "../data"))
@@ -94,19 +93,15 @@ if __name__ == '__main__':
     print("I can't find the benchmark data directory. Aborting.")
     sys.exit(1)
 
-  # Gather the remaining arguments into a string of extra args for d8.
-  extra_args = ""
-  if opts.extra_args:
-    extra_args = opts.extra_args
-
-  if suite == "octane":
-    runs = 10
-    suite_path = os.path.join(benchmark_path, "octane")
-    cmd = "run.js"
-  elif suite == "kraken":
+  extra_args = opts.extra_args if opts.extra_args else ""
+  if suite == "kraken":
     runs = 80
     suite_path = os.path.join(benchmark_path, "kraken")
     cmd = os.path.join(csuite_path, "run-kraken.js")
+  elif suite == "octane":
+    runs = 10
+    suite_path = os.path.join(benchmark_path, "octane")
+    cmd = "run.js"
   else:
     runs = 100
     suite_path = os.path.join(benchmark_path, "sunspider")
@@ -124,43 +119,43 @@ if __name__ == '__main__':
   # Ensure output directory is setup
   output_path_base = os.path.abspath(os.getcwd())
   output_path = os.path.join(output_path_base, "_results")
-  output_file = os.path.join(output_path, "master_" + suite)
+  output_file = os.path.join(output_path, f"master_{suite}")
   if not os.path.exists(output_path):
     if opts.verbose:
-      print("Creating directory %s." % output_path)
+      print(f"Creating directory {output_path}.")
     os.mkdir(output_path)
 
   if opts.verbose:
-    print("Working directory for runs is %s." % suite_path)
+    print(f"Working directory for runs is {suite_path}.")
 
   inner_command = " -c \"%s --expose-gc %s %s \"" \
       % (d8_path, extra_args, cmd)
   if opts.verbose:
-    print("calling d8 like so: %s." % inner_command)
+    print(f"calling d8 like so: {inner_command}.")
 
   cmdline_base = "python %s %s -fv -r %d -d %s" \
       % (benchmark_py_path, inner_command, runs, output_path_base)
 
   if mode == "baseline":
-    cmdline = "%s > %s" % (cmdline_base, output_file)
+    cmdline = f"{cmdline_base} > {output_file}"
   else:
-    output_file_compare = output_file + "_compare"
-    cmdline = "%s > %s" % (cmdline_base, output_file_compare)
+    output_file_compare = f"{output_file}_compare"
+    cmdline = f"{cmdline_base} > {output_file_compare}"
 
   if opts.verbose:
-    print("Spawning subprocess: %s." % cmdline)
+    print(f"Spawning subprocess: {cmdline}.")
   return_code = subprocess.call(cmdline, shell=True, cwd=suite_path)
   if return_code < 0:
     print("Error return code: %d." % return_code)
 
   if mode == "baseline":
-    print("Wrote %s." % output_file)
-    print("Run %s again with compare mode to see results." % suite)
+    print(f"Wrote {output_file}.")
+    print(f"Run {suite} again with compare mode to see results.")
   else:
-    print("Wrote %s." % output_file_compare)
-    cmdline = "python %s  %s -f %s" % (compare_baseline_py_path, output_file, output_file_compare)
+    print(f"Wrote {output_file_compare}.")
+    cmdline = f"python {compare_baseline_py_path}  {output_file} -f {output_file_compare}"
     if opts.verbose:
-      print("Spawning subprocess: %s." % cmdline)
+      print(f"Spawning subprocess: {cmdline}.")
     return_code = subprocess.call(cmdline, shell=True, cwd=suite_path)
     if return_code < 0:
       print("Error return code: %d." % return_code)

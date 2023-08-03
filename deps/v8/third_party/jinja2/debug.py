@@ -154,11 +154,7 @@ def get_template_locals(real_locals: t.Mapping[str, t.Any]) -> t.Dict[str, t.Any
     # Start with the current template context.
     ctx: "t.Optional[Context]" = real_locals.get("context")
 
-    if ctx is not None:
-        data: t.Dict[str, t.Any] = ctx.get_all().copy()
-    else:
-        data = {}
-
+    data = ctx.get_all().copy() if ctx is not None else {}
     # Might be in a derived context that only sets local variables
     # rather than pushing a context. Local variables follow the scheme
     # l_depth_name. Find the highest-depth local that has a value for

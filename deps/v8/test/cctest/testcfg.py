@@ -67,7 +67,7 @@ class TestLoader(testsuite.TestLoader):
       if line.startswith(test_total_prefix):
         tests_total = int(line[len(test_total_prefix):])
 
-    assert (len(filtered_output) > 0)
+    assert filtered_output
     assert (len(filtered_output) == tests_total)
 
     return sorted(filtered_output)

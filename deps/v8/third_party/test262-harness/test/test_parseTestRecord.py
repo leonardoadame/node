@@ -15,7 +15,7 @@ sys.path.append("src")
 from parseTestRecord import *
 
 def slurpFile(name):
-    with open('test/' + name) as f:
+    with open(f'test/{name}') as f:
         contents = f.read()
     return contents
 

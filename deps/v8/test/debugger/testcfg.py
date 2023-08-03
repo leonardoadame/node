@@ -44,9 +44,10 @@ class TestCase(testcase.D8TestCase):
       else:
         break
 
-    files = []
-    files.append(os.path.normpath(os.path.join(
-        self.suite.root, "..", "mjsunit", "mjsunit.js")))
+    files = [
+        os.path.normpath(
+            os.path.join(self.suite.root, "..", "mjsunit", "mjsunit.js"))
+    ]
     files.append(os.path.join(self.suite.root, "test-api.js"))
     files.extend([os.path.normpath(os.path.join(self.suite.root, '..', '..', f))
                   for f in files_list])
@@ -72,4 +73,4 @@ class TestCase(testcase.D8TestCase):
     # the extension in the first place.
     if os.path.exists(base_path + self._get_suffix()):
       return base_path + self._get_suffix()
-    return base_path + '.mjs'
+    return f'{base_path}.mjs'
