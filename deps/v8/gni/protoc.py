@@ -41,7 +41,7 @@ def main():
         os.unlink(tmp_path)
 
     with open(args.dependency_out, 'w', encoding='utf-8') as f:
-      f.write(args.descriptor_set_out + ":")
+      f.write(f"{args.descriptor_set_out}:")
       f.write(dependency_data)
   else:
     subprocess.check_call(sys.argv[1:])

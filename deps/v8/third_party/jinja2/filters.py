@@ -46,10 +46,7 @@ V = t.TypeVar("V")
 def ignore_case(value: V) -> V:
     """For use as a postprocessor for :func:`make_attrgetter`. Converts strings
     to lowercase and returns other types as-is."""
-    if isinstance(value, str):
-        return t.cast(V, value.lower())
-
-    return value
+    return t.cast(V, value.lower()) if isinstance(value, str) else value
 
 
 def make_attrgetter(
@@ -95,11 +92,7 @@ def make_multi_attrgetter(
 
     Examples of attribute: "attr1,attr2", "attr1.inner1.0,attr2.inner2.0", etc.
     """
-    if isinstance(attribute, str):
-        split: t.Sequence[t.Union[str, int, None]] = attribute.split(",")
-    else:
-        split = [attribute]
-
+    split = attribute.split(",") if isinstance(attribute, str) else [attribute]
     parts = [_prepare_attribute_parts(item) for item in split]
 
     def attrgetter(item: t.Any) -> t.List[t.Any]:
@@ -162,11 +155,7 @@ def do_urlencode(
     if isinstance(value, str) or not isinstance(value, abc.Iterable):
         return url_quote(value)
 
-    if isinstance(value, dict):
-        items: t.Iterable[t.Tuple[str, t.Any]] = value.items()
-    else:
-        items = value  # type: ignore
-
+    items = value.items() if isinstance(value, dict) else value
     return "&".join(
         f"{url_quote(k, for_qs=True)}={url_quote(v, for_qs=True)}" for k, v in items
     )
@@ -194,7 +183,7 @@ def do_replace(
         count = -1
 
     if not eval_ctx.autoescape:
-        return str(s).replace(str(old), str(new), count)
+        return s.replace(old, new, count)
 
     if (
         hasattr(old, "__html__")
@@ -281,7 +270,7 @@ def do_xmlattr(
     )
 
     if autospace and rv:
-        rv = " " + rv
+        rv = f" {rv}"
 
     if eval_ctx.autoescape:
         rv = Markup(rv)
@@ -568,7 +557,7 @@ def sync_do_join(
 
     # no automatic escaping?  joining is a lot easier then
     if not eval_ctx.autoescape:
-        return str(d).join(map(str, value))
+        return d.join(map(str, value))
 
     # if the delimiter doesn't have an html representation we check
     # if any of the items has.  If yes we do a coercion to Markup
@@ -582,11 +571,7 @@ def sync_do_join(
             else:
                 value[idx] = str(item)
 
-        if do_escape:
-            d = escape(d)
-        else:
-            d = str(d)
-
+        d = escape(d) if do_escape else d
         return d.join(value)
 
     # no html involved, to normal joining
@@ -799,11 +784,7 @@ def do_indent(
 
         Rename the ``indentfirst`` argument to ``first``.
     """
-    if isinstance(width, str):
-        indention = width
-    else:
-        indention = " " * width
-
+    indention = width if isinstance(width, str) else " " * width
     newline = "\n"
 
     if isinstance(s, Markup):
@@ -951,10 +932,7 @@ def do_int(value: t.Any, default: int = 0, base: int = 10) -> int:
     The base is ignored for decimal numbers and non-string values.
     """
     try:
-        if isinstance(value, str):
-            return int(value, base)
-
-        return int(value)
+        return int(value, base) if isinstance(value, str) else int(value)
     except (TypeError, ValueError):
         # this quirk is necessary so that "42.23"|int gives 42.
         try:
@@ -1039,8 +1017,7 @@ def sync_do_slice(
     """
     seq = list(value)
     length = len(seq)
-    items_per_slice = length // slices
-    slices_with_extra = length % slices
+    items_per_slice, slices_with_extra = divmod(length, slices)
     offset = 0
 
     for slice_number in range(slices):
@@ -1338,7 +1315,7 @@ def do_mark_safe(value: str) -> Markup:
 
 def do_mark_unsafe(value: str) -> str:
     """Mark a value as unsafe.  This is the reverse operation for :func:`safe`."""
-    return str(value)
+    return value
 
 
 @typing.overload
@@ -1380,7 +1357,7 @@ def do_attr(
     See :ref:`Notes on subscriptions <notes-on-subscriptions>` for more details.
     """
     try:
-        name = str(name)
+        name = name
     except UnicodeError:
         pass
     else:

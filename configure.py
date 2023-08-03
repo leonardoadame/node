@@ -46,8 +46,6 @@ from utils import SearchFiles
 # parse our options
 parser = argparse.ArgumentParser()
 
-valid_os = ('win', 'mac', 'solaris', 'freebsd', 'openbsd', 'linux',
-            'android', 'aix', 'cloudabi', 'os400', 'ios')
 valid_arch = ('arm', 'arm64', 'ia32', 'mips', 'mipsel', 'mips64el', 'ppc',
               'ppc64', 'x64', 'x86', 'x86_64', 's390x', 'riscv64', 'loong64')
 valid_arm_float_abi = ('soft', 'softfp', 'hard')
@@ -123,6 +121,19 @@ parser.add_argument('--no-cross-compiling',
     default=None,
     help='force build to be considered as NOT cross compiled')
 
+valid_os = (
+    'win',
+    'mac',
+    'solaris',
+    'freebsd',
+    'openbsd',
+    'linux',
+    'android',
+    'aix',
+    'cloudabi',
+    'os400',
+    'ios',
+)
 parser.add_argument('--dest-os',
     action='store',
     dest='dest_os',
@@ -445,12 +456,14 @@ shared_optgroup.add_argument('--shared-cares-libpath',
 parser.add_argument_group(shared_optgroup)
 
 for builtin in shareable_builtins:
-  builtin_id = 'shared_builtin_' + builtin + '_path'
-  shared_builtin_optgroup.add_argument('--shared-builtin-' + builtin + '-path',
-    action='store',
-    dest='node_shared_builtin_' + builtin.replace('/', '_') + '_path',
-    help='Path to shared file for ' + builtin + ' builtin. '
-         'Will be used instead of bundled version at runtime')
+  builtin_id = f'shared_builtin_{builtin}_path'
+  shared_builtin_optgroup.add_argument(
+      f'--shared-builtin-{builtin}-path',
+      action='store',
+      dest='node_shared_builtin_' + builtin.replace('/', '_') + '_path',
+      help=
+      f'Path to shared file for {builtin} builtin. Will be used instead of bundled version at runtime',
+  )
 
 parser.add_argument_group(shared_builtin_optgroup)
 
@@ -893,10 +906,7 @@ def pkg_config(pkg):
   for flag in ['--libs-only-l', '--cflags-only-I',
                '--libs-only-L', '--modversion']:
     args += [flag]
-    if isinstance(pkg, list):
-      args += pkg
-    else:
-      args += [pkg]
+    args += pkg if isinstance(pkg, list) else [pkg]
     try:
       proc = subprocess.Popen(shlex.split(pkg_config) + args,
                               stdout=subprocess.PIPE)
@@ -923,9 +933,10 @@ def try_check_compiler(cc, lang):
                      b'__clang_major__ __clang_minor__ __clang_patchlevel__')
 
     if sys.platform == 'zos':
-      values = (to_utf8(proc.communicate()[0]).split('\n')[-2].split() + ['0'] * 7)[0:7]
+      values = (to_utf8(proc.communicate()[0]).split('\n')[-2].split() +
+                ['0'] * 7)[:7]
     else:
-      values = (to_utf8(proc.communicate()[0]).split() + ['0'] * 7)[0:7]
+      values = (to_utf8(proc.communicate()[0]).split() + ['0'] * 7)[:7]
 
   is_clang = values[0] == '1'
   gcc_version = tuple(map(int, values[1:1+3]))
@@ -954,7 +965,7 @@ def get_version_helper(cc, regexp):
   with proc:
     match = re.search(regexp, to_utf8(proc.communicate()[1]))
 
-  return match.group(2) if match else '0.0'
+  return match[2] if match else '0.0'
 
 def get_nasm_version(asm):
   try:
@@ -971,7 +982,7 @@ def get_nasm_version(asm):
     match = re.match(r"NASM version ([2-9]\.[0-9][0-9]+)",
                      to_utf8(proc.communicate()[0]))
 
-  return match.group(1) if match else '0.0'
+  return match[1] if match else '0.0'
 
 def get_llvm_version(cc):
   return get_version_helper(
@@ -1000,10 +1011,8 @@ def get_gas_version(cc):
   with proc:
     gas_ret = to_utf8(proc.communicate()[1])
 
-  match = re.match(r"GNU assembler version ([2-9]\.[0-9]+)", gas_ret)
-
-  if match:
-    return match.group(1)
+  if match := re.match(r"GNU assembler version ([2-9]\.[0-9]+)", gas_ret):
+    return match[1]
 
   warn(f'Could not recognize `gas`: {gas_ret}')
   return '0.0'
@@ -1126,22 +1135,16 @@ def host_arch_cc():
     '__loongarch64': 'loong64',
   }
 
-  rtn = 'ia32' # default
-
-  for key, value in matchup.items():
-    if k.get(key, 0) and k[key] != '0':
-      rtn = value
-      break
-
+  rtn = next(
+      (value
+       for key, value in matchup.items() if k.get(key, 0) and k[key] != '0'),
+      'ia32',
+  )
   if rtn == 'mipsel' and '_LP64' in k:
     rtn = 'mips64el'
 
   if rtn == 'riscv':
-    if k['__riscv_xlen'] == '64':
-      rtn = 'riscv64'
-    else:
-      rtn = 'riscv32'
-
+    rtn = 'riscv64' if k['__riscv_xlen'] == '64' else 'riscv32'
   return rtn
 
 
@@ -1201,7 +1204,8 @@ def configure_zos(o):
   o['variables']['node_static_zoslib'] = b(True)
   if options.static_zoslib_gyp:
     # Apply to all Node.js components for now
-    o['variables']['zoslib_include_dir'] = Path(options.static_zoslib_gyp).parent + '/include'
+    o['variables'][
+        'zoslib_include_dir'] = f'{Path(options.static_zoslib_gyp).parent}/include'
     o['include_dirs'] += [o['variables']['zoslib_include_dir']]
   else:
     raise Exception('--static-zoslib-gyp=<path to zoslib.gyp file> is required.')

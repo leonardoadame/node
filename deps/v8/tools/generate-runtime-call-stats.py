@@ -175,8 +175,9 @@ def run_benchmark(story,
     chromium_dir = os.path(chromium_dir, "src")
     xvfb = os.path.join(chromium_dir, "testing", "xvfb.py")
     if not os.path.isfile(xvfb):
-      print(("chromium_dir does not point to a valid chromium checkout: " +
-             orig_chromium_dir))
+      print(
+          f"chromium_dir does not point to a valid chromium checkout: {orig_chromium_dir}"
+      )
       sys.exit(1)
 
   command = [
@@ -216,9 +217,9 @@ def run_benchmark(story,
 
     command += ["--extra-chrome-categories", ",".join(categories)]
 
-  print("Output directory: %s" % output_dir)
-  stdout = ""
+  print(f"Output directory: {output_dir}")
   print(f"Running: {' '.join(command)}\n")
+  stdout = ""
   proc = subprocess.Popen(
       command,
       stdout=subprocess.PIPE,
@@ -306,10 +307,7 @@ class Row:
     return l
 
   def key(self):
-    if self.mean_duration is not None:
-      return self.mean_duration
-    else:
-      return self.durations[0]
+    return self.durations[0] if self.mean_duration is None else self.mean_duration
 
 
 class Bucket:
@@ -322,13 +320,13 @@ class Bucket:
     self.total_row = None
 
   def __repr__(self):
-    s = "Bucket: " + self.name + " {\n"
+    s = f"Bucket: {self.name}" + " {\n"
     if self.table:
       s += "\n  ".join(str(row) for row in self.table) + "\n"
     elif self.data:
       s += "\n  ".join(str(row) for row in self.data.values()) + "\n"
     if self.total_row:
-      s += "  " + str(self.total_row) + "\n"
+      s += f"  {str(self.total_row)}" + "\n"
     return s + "}"
 
   def add_data_point(self, name, run, count, duration):
@@ -366,11 +364,7 @@ class Bucket:
 
 
 def collect_buckets(story, group=True, repeats=1, output_dir="."):
-  if group:
-    groups = RUNTIME_CALL_STATS_GROUPS
-  else:
-    groups = []
-
+  groups = RUNTIME_CALL_STATS_GROUPS if group else []
   buckets = {}
 
   for i in range(0, repeats):
@@ -380,25 +374,21 @@ def collect_buckets(story, group=True, repeats=1, output_dir="."):
 
     # run_benchmark now dumps two files: a .pb.gz file and a .pb_converted.json
     # file. We only need the latter.
-    trace_file_glob = os.path.join(trace_dir, "*" + JSON_FILE_EXTENSION)
+    trace_file_glob = os.path.join(trace_dir, f"*{JSON_FILE_EXTENSION}")
     trace_files = glob.glob(trace_file_glob)
     if not trace_files:
-      print("Could not find *%s file in %s" % (JSON_FILE_EXTENSION, trace_dir))
+      print(f"Could not find *{JSON_FILE_EXTENSION} file in {trace_dir}")
       sys.exit(1)
     if len(trace_files) > 1:
-      print("Expecting one file but got: %s" % trace_files)
+      print(f"Expecting one file but got: {trace_files}")
       sys.exit(1)
 
     trace_file = trace_files[0]
 
     output = process_trace(trace_file)
     for name in output:
-      bucket_name = "Other"
-      for group in groups:
-        if group[1].match(name):
-          bucket_name = group[0]
-          break
-
+      bucket_name = next(
+          (group[0] for group in groups if group[1].match(name)), "Other")
       value = output[name]
       if bucket_name not in buckets:
         bucket = Bucket(bucket_name, repeats)

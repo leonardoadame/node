@@ -137,12 +137,12 @@ def test_float(value: t.Any) -> bool:
 
 def test_lower(value: str) -> bool:
     """Return true if the variable is lowercased."""
-    return str(value).islower()
+    return value.islower()
 
 
 def test_upper(value: str) -> bool:
     """Return true if the variable is uppercased."""
-    return str(value).isupper()
+    return value.isupper()
 
 
 def test_string(value: t.Any) -> bool:

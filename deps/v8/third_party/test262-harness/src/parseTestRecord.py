@@ -41,7 +41,7 @@ _LICENSE_PATTERN = re.compile(
 def yamlAttrParser(testRecord, attrs, name, onerror = print):
     parsed = yamlLoad(attrs)
     if parsed is None:
-        onerror("Failed to parse yaml in name %s" % name)
+        onerror(f"Failed to parse yaml in name {name}")
         return
 
     for key in parsed:
@@ -56,17 +56,11 @@ def yamlAttrParser(testRecord, attrs, name, onerror = print):
 
 def findLicense(src):
     match = _LICENSE_PATTERN.search(src)
-    if not match:
-        return None
-
-    return match.group(0)
+    return None if not match else match.group(0)
 
 def findAttrs(src):
     match = _YAML_PATTERN.search(src)
-    if not match:
-        return (None, None)
-
-    return (match.group(0), match.group(1).strip())
+    return (None, None) if not match else (match.group(0), match.group(1).strip())
 
 def parseTestRecord(src, name, onerror = print):
     # Find the license block.
@@ -77,7 +71,7 @@ def parseTestRecord(src, name, onerror = print):
 
     # YAML frontmatter is required for all tests.
     if frontmatter is None:
-        onerror("Missing frontmatter: %s" % name)
+        onerror(f"Missing frontmatter: {name}")
 
     # The license shuold be placed before the frontmatter and there shouldn't be
     # any extra content between the license and the frontmatter.
@@ -85,12 +79,12 @@ def parseTestRecord(src, name, onerror = print):
         headerIdx = src.index(header)
         frontmatterIdx = src.index(frontmatter)
         if headerIdx > frontmatterIdx:
-            onerror("Unexpected license after frontmatter: %s" % name)
+            onerror(f"Unexpected license after frontmatter: {name}")
 
         # Search for any extra test content, but ignore whitespace only or comment lines.
         extra = src[headerIdx + len(header) : frontmatterIdx]
         if extra and any(line.strip() and not line.lstrip().startswith("//") for line in extra.split("\n")):
-            onerror("Unexpected test content between license and frontmatter: %s" % name)
+            onerror(f"Unexpected test content between license and frontmatter: {name}")
 
     # Remove the license and YAML parts from the actual test content.
     test = src
@@ -99,8 +93,7 @@ def parseTestRecord(src, name, onerror = print):
     if header is not None:
         test = test.replace(header, '')
 
-    testRecord = {}
-    testRecord['header'] = header.strip() if header else ''
+    testRecord = {'header': header.strip() if header else ''}
     testRecord['test'] = test
 
     if attrs:
@@ -108,6 +101,6 @@ def parseTestRecord(src, name, onerror = print):
 
     # Report if the license block is missing in non-generated tests.
     if header is None and "generated" not in testRecord and "hashbang" not in name:
-        onerror("No license found in: %s" % name)
+        onerror(f"No license found in: {name}")
 
     return testRecord

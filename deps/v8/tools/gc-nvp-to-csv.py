@@ -29,7 +29,7 @@ def process_trace(filename):
 
 
 if len(sys.argv) != 2:
-  print("Usage: %s <GC-trace-filename>" % sys.argv[0])
+  print(f"Usage: {sys.argv[0]} <GC-trace-filename>")
   sys.exit(1)
 
 process_trace(sys.argv[1])

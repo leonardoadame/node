@@ -97,17 +97,15 @@ def ClangTidyRunFull(build_folder, skip_output_filter, checks, auto_fix):
     extra_args.append('-fix')
 
   if checks is not None:
-    extra_args.append('-checks')
-    extra_args.append('-*, ' + checks)
-
+    extra_args.extend(('-checks', f'-*, {checks}'))
   with open(os.devnull, 'w') as DEVNULL:
     ct_process = subprocess.Popen(
-      ['run-clang-tidy', '-j' + str(THREADS), '-p', '.']
-       + ['-header-filter'] + HEADER_REGEX + extra_args
-       + FILE_REGEXS,
-      cwd=build_folder,
-      stdout=subprocess.PIPE,
-      stderr=DEVNULL)
+        ((((['run-clang-tidy', f'-j{str(THREADS)}', '-p', '.'] +
+            ['-header-filter']) + HEADER_REGEX) + extra_args) + FILE_REGEXS),
+        cwd=build_folder,
+        stdout=subprocess.PIPE,
+        stderr=DEVNULL,
+    )
   removing_check_header = False
   empty_lines = 0
 
@@ -142,13 +140,13 @@ def ClangTidyRunAggregate(build_folder, print_files):
   """
   with open(os.devnull, 'w') as DEVNULL:
     ct_process = subprocess.Popen(
-      ['run-clang-tidy', '-j' + str(THREADS), '-p', '.'] +
-        ['-header-filter'] + HEADER_REGEX +
-        FILE_REGEXS,
-      cwd=build_folder,
-      stdout=subprocess.PIPE,
-      stderr=DEVNULL)
-  warnings = dict()
+        (((['run-clang-tidy', f'-j{str(THREADS)}', '-p', '.'] +
+           ['-header-filter']) + HEADER_REGEX) + FILE_REGEXS),
+        cwd=build_folder,
+        stdout=subprocess.PIPE,
+        stderr=DEVNULL,
+    )
+  warnings = {}
   while True:
     line = ct_process.stdout.readline()
     if line == '':
@@ -223,16 +221,14 @@ def ClangTidyRunSingleFile(build_folder, filename_to_check, auto_fix,
   """
   Run clang-tidy on a single file.
   """
-  files_with_relative_path = []
-
   compdb_filepath = os.path.join(build_folder, 'compile_commands.json')
   with open(compdb_filepath) as raw_json_file:
     compdb = json.load(raw_json_file)
 
-  for db_entry in compdb:
-    if db_entry['file'].endswith(filename_to_check):
-      files_with_relative_path.append(db_entry['file'])
-
+  files_with_relative_path = [
+      db_entry['file'] for db_entry in compdb
+      if db_entry['file'].endswith(filename_to_check)
+  ]
   with open(os.devnull, 'w') as DEVNULL:
     for file_with_relative_path in files_with_relative_path:
       line_filter = None
@@ -244,7 +240,7 @@ def ClangTidyRunSingleFile(build_folder, filename_to_check, auto_fix,
                                  '../') + '\"}'
         line_filter += ']'
 
-      extra_args = ['-line-filter=' + line_filter] if line_filter else []
+      extra_args = [f'-line-filter={line_filter}'] if line_filter else []
 
       if auto_fix:
         extra_args.append('-fix')
@@ -401,12 +397,12 @@ def main():
         print('Auto fix not working in aggregate mode, running without.')
       ClangTidyRunAggregate(options.build_folder, options.show_loc)
     elif options.single:
-      print('Running clang-tidy - single on ' + options.file_name)
+      print(f'Running clang-tidy - single on {options.file_name}')
       if options.file_name is not None:
-        line_ranges = []
-        for match in re.findall(r'(\[.*?\])', options.line_ranges):
-          if match is not []:
-            line_ranges.append(match)
+        line_ranges = [
+            match for match in re.findall(r'(\[.*?\])', options.line_ranges)
+            if match is not []
+        ]
         ClangTidyRunSingleFile(options.build_folder,
                                options.file_name,
                                options.auto_fix,

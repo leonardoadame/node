@@ -69,7 +69,8 @@ MIN_ARGS = 3  # Script, outdir, tempdir
 
 def _Call(cmd_list, silent=False):
   cmd = " ".join(cmd_list)
-  if not silent: print("# %s" % cmd)
+  if not silent:
+    print(f"# {cmd}")
   return subprocess.call(cmd, shell=True)
 
 class Runner(object):
@@ -84,8 +85,8 @@ class Runner(object):
       print("libwee8 library not found, make sure to pass the outdir as "
             "first argument; see --help")
       sys.exit(1)
-    src_wasm_file = self.src_file_basename + ".wasm"
-    dst_wasm_file = self.dst_file_basename + ".wasm"
+    src_wasm_file = f"{self.src_file_basename}.wasm"
+    dst_wasm_file = f"{self.dst_file_basename}.wasm"
     shutil.copyfile(src_wasm_file, dst_wasm_file)
 
   def _Error(self, step, lang, compiler, code):
@@ -96,24 +97,38 @@ class Runner(object):
     return code
 
   def CompileAndRun(self, compiler, language):
-    print("==== %s %s/%s ====" %
-          (self.name, language["name"], compiler["name"]))
+    print(f'==== {self.name} {language["name"]}/{compiler["name"]} ====')
     lang = language["suffix"]
-    src_file = self.src_file_basename + "." + lang
-    exe_file = self.dst_file_basename + "-" + lang
-    obj_file = exe_file  + ".o"
-    # Compile.
-    c = _Call([compiler[lang], "-c", language["cflags"], CFLAGS,
-               "-I", WASM_PATH, "-o", obj_file, src_file])
-    if c: return self._Error("compilation", lang, compiler, c)
-    # Link.
-    c = _Call([compiler["cc"], CFLAGS, compiler["ldflags"], obj_file,
-               "-o", exe_file, self.lib_file, "-ldl -pthread"])
-    if c: return self._Error("linking", lang, compiler, c)
+    src_file = f"{self.src_file_basename}.{lang}"
+    exe_file = f"{self.dst_file_basename}-{lang}"
+    obj_file = f"{exe_file}.o"
+    if c := _Call([
+        compiler[lang],
+        "-c",
+        language["cflags"],
+        CFLAGS,
+        "-I",
+        WASM_PATH,
+        "-o",
+        obj_file,
+        src_file,
+    ]):
+      return self._Error("compilation", lang, compiler, c)
+    if c := _Call([
+        compiler["cc"],
+        CFLAGS,
+        compiler["ldflags"],
+        obj_file,
+        "-o",
+        exe_file,
+        self.lib_file,
+        "-ldl -pthread",
+    ]):
+      return self._Error("linking", lang, compiler, c)
     # Execute.
-    exe_file = "./%s-%s" % (self.name, lang)
-    c = _Call(["cd", self.tempdir, ";", exe_file])
-    if c: return self._Error("execution", lang, compiler, c)
+    exe_file = f"./{self.name}-{lang}"
+    if c := _Call(["cd", self.tempdir, ";", exe_file]):
+      return self._Error("execution", lang, compiler, c)
     return 0
 
 def Main(args):
@@ -144,7 +159,7 @@ def Main(args):
       elif arg in EXAMPLES and arg not in custom_examples:
         custom_examples.append(arg)
       else:
-        print("Didn't understand '%s'" % arg)
+        print(f"Didn't understand '{arg}'")
         return 1
     if custom_compilers:
       compilers = custom_compilers
@@ -156,8 +171,8 @@ def Main(args):
     runner = Runner(example, outdir, tempdir)
     for compiler in compilers:
       for language in languages:
-        c = runner.CompileAndRun(compiler, language)
-        if c: result = c
+        if c := runner.CompileAndRun(compiler, language):
+          result = c
   if result:
     print("\nFinished with errors.")
   else:

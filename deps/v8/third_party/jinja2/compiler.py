@@ -90,7 +90,7 @@ def _make_unop(
             self.write(f"environment.call_unop(context, {op!r}, ")
             self.visit(node.node, frame)
         else:
-            self.write("(" + op)
+            self.write(f"({op}")
             self.visit(node.node, frame)
 
         self.write(")")
@@ -116,10 +116,7 @@ def generate(
     )
     generator.visit(node)
 
-    if stream is None:
-        return generator.stream.getvalue()  # type: ignore
-
-    return None
+    return generator.stream.getvalue() if stream is None else None
 
 
 def has_safe_repr(value: t.Any) -> bool:
@@ -596,10 +593,7 @@ class CodeGenerator(NodeVisitor):
 
     def leave_frame(self, frame: Frame, with_python_scope: bool = False) -> None:
         if not with_python_scope:
-            undefs = []
-            for target in frame.symbols.loads:
-                undefs.append(target)
-            if undefs:
+            if undefs := list(frame.symbols.loads):
                 self.writeline(f"{' = '.join(undefs)} = missing")
 
     def choose_async(self, async_value: str = "async ", sync_value: str = "") -> str:
@@ -761,18 +755,14 @@ class CodeGenerator(NodeVisitor):
 
     def get_resolve_func(self) -> str:
         target = self._context_reference_stack[-1]
-        if target == "context":
-            return "resolve"
-        return f"{target}.resolve"
+        return "resolve" if target == "context" else f"{target}.resolve"
 
     def derive_context(self, frame: Frame) -> str:
         return f"{self.get_context_ref()}.derived({self.dump_local_context(frame)})"
 
     def parameter_is_undeclared(self, target: str) -> bool:
         """Checks if a given target is an undeclared parameter."""
-        if not self._param_def_block:
-            return False
-        return target in self._param_def_block[-1]
+        return target in self._param_def_block[-1] if self._param_def_block else False
 
     def push_assign_tracking(self) -> None:
         """Pushes a new layer for assignment tracking."""
@@ -909,7 +899,7 @@ class CodeGenerator(NodeVisitor):
         # at this point we now have the blocks collected and can visit them too.
         for name, block in self.blocks.items():
             self.writeline(
-                f"{self.func('block_' + name)}(context, missing=missing{envenv}):",
+                f"{self.func(f'block_{name}')}(context, missing=missing{envenv}):",
                 block,
                 1,
             )
@@ -954,11 +944,7 @@ class CodeGenerator(NodeVisitor):
                 self.indent()
                 level += 1
 
-        if node.scoped:
-            context = self.derive_context(frame)
-        else:
-            context = self.get_context_ref()
-
+        context = self.derive_context(frame) if node.scoped else self.get_context_ref()
         if node.required:
             self.writeline(f"if len(context.blocks[{node.name!r}]) <= 1:", node)
             self.indent()
@@ -1531,9 +1517,9 @@ class CodeGenerator(NodeVisitor):
                 val = self._output_const_repr(item)
 
                 if frame.buffer is None:
-                    self.writeline("yield " + val)
+                    self.writeline(f"yield {val}")
                 else:
-                    self.writeline(val + ",")
+                    self.writeline(f"{val},")
             else:
                 if frame.buffer is None:
                     self.writeline("yield ", item)
@@ -1861,7 +1847,7 @@ class CodeGenerator(NodeVisitor):
             self.write("))")
 
     def visit_Keyword(self, node: nodes.Keyword, frame: Frame) -> None:
-        self.write(node.key + "=")
+        self.write(f"{node.key}=")
         self.visit(node.value, frame)
 
     # -- Unused nodes for extensions
@@ -1881,7 +1867,7 @@ class CodeGenerator(NodeVisitor):
     def visit_EnvironmentAttribute(
         self, node: nodes.EnvironmentAttribute, frame: Frame
     ) -> None:
-        self.write("environment." + node.name)
+        self.write(f"environment.{node.name}")
 
     def visit_ExtensionAttribute(
         self, node: nodes.ExtensionAttribute, frame: Frame

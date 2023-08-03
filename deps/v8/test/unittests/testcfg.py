@@ -10,7 +10,7 @@ from testrunner.local import testsuite
 from testrunner.objects import testcase
 
 
-ADDITIONAL_VARIANTS = set(["minor_mc"])
+ADDITIONAL_VARIANTS = {"minor_mc"}
 
 
 class VariantsGenerator(testsuite.VariantsGenerator):
@@ -82,22 +82,23 @@ class TestSuite(testsuite.TestSuite):
 class TestCase(testcase.TestCase):
   def _get_suite_flags(self):
     return (
-        ["--gtest_filter=" + self.path] +
-        ["--gtest_random_seed=%s" % self.random_seed] +
-        ["--gtest_print_time=0"]
-    )
+        [f"--gtest_filter={self.path}"] +
+        [f"--gtest_random_seed={self.random_seed}"]) + ["--gtest_print_time=0"]
 
   def get_shell(self):
-    return 'v8_' + self.suite.name
+    return f'v8_{self.suite.name}'
 
   def get_android_resources(self):
     # Bytecode-generator tests are the only ones requiring extra files on
     # Android.
     parts = self.name.split('.')
     if parts[0] == 'BytecodeGeneratorTest':
-      expectation_file = os.path.join(self.suite.root, 'interpreter',
-                                      'bytecode_expectations',
-                                      '%s.golden' % parts[1])
+      expectation_file = os.path.join(
+          self.suite.root,
+          'interpreter',
+          'bytecode_expectations',
+          f'{parts[1]}.golden',
+      )
       if os.path.exists(expectation_file):
         return [expectation_file]
     return []

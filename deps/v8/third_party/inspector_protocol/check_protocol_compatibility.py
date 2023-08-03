@@ -36,29 +36,22 @@ except ImportError:
 
 
 def list_to_map(items, key):
-  result = {}
-  for item in items:
-    if "experimental" not in item and "hidden" not in item:
-      result[item[key]] = item
-  return result
+  return {
+      item[key]: item
+      for item in items if "experimental" not in item and "hidden" not in item
+  }
 
 
 def named_list_to_map(container, name, key):
-  if name in container:
-    return list_to_map(container[name], key)
-  return {}
+  return list_to_map(container[name], key) if name in container else {}
 
 
 def removed(reverse):
-  if reverse:
-    return "added"
-  return "removed"
+  return "added" if reverse else "removed"
 
 
 def required(reverse):
-  if reverse:
-    return "optional"
-  return "required"
+  return "optional" if reverse else "required"
 
 
 def compare_schemas(d_1, d_2, reverse):
@@ -74,7 +67,7 @@ def compare_schemas(d_1, d_2, reverse):
   for name in domains_by_name_1:
     domain_1 = domains_by_name_1[name]
     if name not in domains_by_name_2:
-      errors.append("%s: domain has been %s" % (name, removed(reverse)))
+      errors.append(f"{name}: domain has been {removed(reverse)}")
       continue
     compare_domains(domain_1, domains_by_name_2[name], types_1, types_2, errors,
                     reverse)
@@ -88,8 +81,8 @@ def compare_domains(domain_1, domain_2, types_map_1, types_map_2, errors, revers
   for name in commands_1:
     command_1 = commands_1[name]
     if name not in commands_2:
-      errors.append("%s.%s: command has been %s" %
-                    (domain_1["domain"], name, removed(reverse)))
+      errors.append(
+          f'{domain_1["domain"]}.{name}: command has been {removed(reverse)}')
       continue
     compare_commands(domain_name, command_1, commands_2[name], types_map_1,
                      types_map_2, errors, reverse)
@@ -99,15 +92,15 @@ def compare_domains(domain_1, domain_2, types_map_1, types_map_2, errors, revers
   for name in events_1:
     event_1 = events_1[name]
     if name not in events_2:
-      errors.append("%s.%s: event has been %s" %
-                    (domain_1["domain"], name, removed(reverse)))
+      errors.append(
+          f'{domain_1["domain"]}.{name}: event has been {removed(reverse)}')
       continue
     compare_events(domain_name, event_1, events_2[name], types_map_1,
                    types_map_2, errors, reverse)
 
 
 def compare_commands(domain_name, command_1, command_2, types_map_1, types_map_2, errors, reverse):
-  context = domain_name + "." + command_1["name"]
+  context = f"{domain_name}." + command_1["name"]
 
   params_1 = named_list_to_map(command_1, "parameters", "name")
   params_2 = named_list_to_map(command_2, "parameters", "name")
@@ -122,7 +115,7 @@ def compare_commands(domain_name, command_1, command_2, types_map_1, types_map_2
 
 
 def compare_events(domain_name, event_1, event_2, types_map_1, types_map_2, errors, reverse):
-  context = domain_name + "." + event_1["name"]
+  context = f"{domain_name}." + event_1["name"]
   params_1 = named_list_to_map(event_1, "parameters", "name")
   params_2 = named_list_to_map(event_2, "parameters", "name")
   compare_params_list(context, "parameter", params_1, params_2, types_map_1,
@@ -134,20 +127,28 @@ def compare_params_list(context, kind, params_1, params_2, types_map_1, types_ma
     param_1 = params_1[name]
     if name not in params_2:
       if "optional" not in param_1:
-        errors.append("%s.%s: required %s has been %s" %
-                      (context, name, kind, removed(reverse)))
+        errors.append(f"{context}.{name}: required {kind} has been {removed(reverse)}")
       continue
 
     param_2 = params_2[name]
     if param_2 and "optional" in param_2 and "optional" not in param_1:
       errors.append(
-          "%s.%s: %s %s is now %s" %
-          (context, name, required(reverse), kind, required(not reverse)))
+          f"{context}.{name}: {required(reverse)} {kind} is now {required(not reverse)}"
+      )
       continue
     type_1 = extract_type(param_1, types_map_1, errors)
     type_2 = extract_type(param_2, types_map_2, errors)
-    compare_types(context + "." + name, kind, type_1, type_2, types_map_1,
-                  types_map_2, depth, errors, reverse)
+    compare_types(
+        f"{context}.{name}",
+        kind,
+        type_1,
+        type_2,
+        types_map_1,
+        types_map_2,
+        depth,
+        errors,
+        reverse,
+    )
 
 
 def compare_types(context, kind, type_1, type_2, types_map_1, types_map_2, depth, errors, reverse):
@@ -163,8 +164,9 @@ def compare_types(context, kind, type_1, type_2, types_map_1, types_map_2, depth
     return
 
   if base_type_1 != base_type_2:
-    errors.append("%s: %s base type mismatch, '%s' vs '%s'" %
-                  (context, kind, base_type_1, base_type_2))
+    errors.append(
+        f"{context}: {kind} base type mismatch, '{base_type_1}' vs '{base_type_2}'"
+    )
   elif base_type_1 == "object":
     params_1 = named_list_to_map(type_1, "properties", "name")
     params_2 = named_list_to_map(type_2, "properties", "name")
@@ -173,7 +175,7 @@ def compare_types(context, kind, type_1, type_2, types_map_1, types_map_2, depth
       type_name = type_1["id"]
     else:
       type_name = "<object>"
-    context += " %s->%s" % (kind, type_name)
+    context += f" {kind}->{type_name}"
     compare_params_list(context, "property", params_1, params_2, types_map_1,
                         types_map_2, depth + 1, errors, reverse)
   elif base_type_1 == "array":
@@ -194,7 +196,7 @@ def extract_type(typed_object, types_map, errors):
   elif "$ref" in typed_object:
     ref = typed_object["$ref"]
     if ref not in types_map:
-      errors.append("Can not resolve type: %s" % ref)
+      errors.append(f"Can not resolve type: {ref}")
       types_map[ref] = {"id": "<transient>", "type": "object"}
     return types_map[ref]
 
@@ -214,9 +216,9 @@ def normalize_types(obj, domain_name, types):
   elif isinstance(obj, dict):
     for key, value in obj.items():
       if key == "$ref" and value.find(".") == -1:
-        obj[key] = "%s.%s" % (domain_name, value)
+        obj[key] = f"{domain_name}.{value}"
       elif key == "id":
-        obj[key] = "%s.%s" % (domain_name, value)
+        obj[key] = f"{domain_name}.{value}"
         types[obj[key]] = obj
       else:
         normalize_types(value, domain_name, types)
@@ -226,9 +228,8 @@ def load_schema(file_name, domains):
   # pylint: disable=W0613
   if not os.path.isfile(file_name):
     return
-  input_file = open(file_name, "r")
-  parsed_json = pdl.loads(input_file.read(), file_name)
-  input_file.close()
+  with open(file_name, "r") as input_file:
+    parsed_json = pdl.loads(input_file.read(), file_name)
   domains += parsed_json["domains"]
   return parsed_json["version"]
 
@@ -553,7 +554,7 @@ def self_test():
 
 def load_domains_and_baselines(file_name, domains, baseline_domains):
   version = load_schema(os.path.normpath(file_name), domains)
-  suffix = "-%s.%s.json" % (version["major"], version["minor"])
+  suffix = f'-{version["major"]}.{version["minor"]}.json'
   baseline_file = file_name.replace(".json", suffix)
   baseline_file = file_name.replace(".pdl", suffix)
   load_schema(os.path.normpath(baseline_file), baseline_domains)
@@ -585,16 +586,12 @@ def main():
 
   expected_errors = []
   if arg_options.expected_errors:
-    expected_errors_file = open(arg_options.expected_errors, "r")
-    expected_errors = json.loads(expected_errors_file.read())["errors"]
-    expected_errors_file.close()
-
+    with open(arg_options.expected_errors, "r") as expected_errors_file:
+      expected_errors = json.loads(expected_errors_file.read())["errors"]
   errors = compare_schemas(baseline_domains, domains, False)
-  unexpected_errors = []
-  for i in range(len(errors)):
-    if errors[i] not in expected_errors:
-      unexpected_errors.append(errors[i])
-  if len(unexpected_errors) > 0:
+  if unexpected_errors := [
+      errors[i] for i in range(len(errors)) if errors[i] not in expected_errors
+  ]:
     sys.stderr.write("  Compatibility checks FAILED\n")
     for error in unexpected_errors:
       sys.stderr.write("    %s\n" % error)
@@ -603,9 +600,9 @@ def main():
   if arg_options.show_changes:
     changes = compare_schemas(domains, baseline_domains, True)
     if len(changes) > 0:
-      print("  Public changes since %s:" % version)
+      print(f"  Public changes since {version}:")
       for change in changes:
-        print("    %s" % change)
+        print(f"    {change}")
 
   if arg_options.stamp:
     with open(arg_options.stamp, 'a') as _:

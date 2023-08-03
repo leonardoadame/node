@@ -78,10 +78,9 @@ def createDepDirs(dirName):
     if dirName==os.path.dirname(dirName):
         if not os.path.exists(dirName):
             os.mkdir(dirName)
-    else:
-        if not os.path.exists(dirName):
-            createDepDirs(os.path.dirname(dirName))
-            os.mkdir(dirName)
+    elif not os.path.exists(dirName):
+        createDepDirs(os.path.dirname(dirName))
+        os.mkdir(dirName)
 
 def test262PathToConsoleFile(path):
     stuff = os.path.join(TEST262_CONSOLE_CASES_DIR,

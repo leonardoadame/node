@@ -464,10 +464,7 @@ class FunctionLoader(BaseLoader):
         if rv is None:
             raise TemplateNotFound(template)
 
-        if isinstance(rv, str):
-            return rv, None, None
-
-        return rv
+        return (rv, None, None) if isinstance(rv, str) else rv
 
 
 class PrefixLoader(BaseLoader):
@@ -528,8 +525,10 @@ class PrefixLoader(BaseLoader):
     def list_templates(self) -> t.List[str]:
         result = []
         for prefix, loader in self.mapping.items():
-            for template in loader.list_templates():
-                result.append(prefix + self.delimiter + template)
+            result.extend(
+                prefix + self.delimiter + template
+                for template in loader.list_templates()
+            )
         return result
 
 
@@ -630,7 +629,7 @@ class ModuleLoader(BaseLoader):
 
     @staticmethod
     def get_module_filename(name: str) -> str:
-        return ModuleLoader.get_template_key(name) + ".py"
+        return f"{ModuleLoader.get_template_key(name)}.py"
 
     @internalcode
     def load(

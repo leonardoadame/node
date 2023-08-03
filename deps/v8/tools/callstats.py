@@ -43,11 +43,12 @@ MAX_NOF_RETRIES = 5
 def print_command(cmd_args):
   def fix_for_printing(arg):
     m = re.match(r'^--([^=]+)=(.*)$', arg)
-    if m and (' ' in m.group(2) or m.group(2).startswith('-')):
-      arg = "--{}='{}'".format(m.group(1), m.group(2))
+    if m and (' ' in m[2] or m[2].startswith('-')):
+      arg = "--{}='{}'".format(m[1], m[2])
     elif ' ' in arg:
       arg = "'{}'".format(arg)
     return arg
+
   print(" ".join(map(fix_for_printing, cmd_args)))
 
 
@@ -60,12 +61,12 @@ def start_replay_server(args, sites, discard_output=True):
   https_port = 4443 + args.port_offset
   cmd_args = [
       args.replay_bin,
-      "--port=%s" % http_port,
-      "--ssl_port=%s" % https_port,
+      f"--port={http_port}",
+      f"--ssl_port={https_port}",
       "--no-dns_forwarding",
       "--use_closest_match",
       "--no-diff_unknown_requests",
-      "--inject_scripts=deterministic.js,{}".format(injection),
+      f"--inject_scripts=deterministic.js,{injection}",
       args.replay_wpr,
   ]
   print("=" * 80)
@@ -75,13 +76,13 @@ def start_replay_server(args, sites, discard_output=True):
       server = subprocess.Popen(cmd_args, stdout=null, stderr=null)
   else:
     server = subprocess.Popen(cmd_args)
-  print("RUNNING REPLAY SERVER: %s with PID=%s" % (args.replay_bin, server.pid))
+  print(f"RUNNING REPLAY SERVER: {args.replay_bin} with PID={server.pid}")
   print("=" * 80)
   return {'process': server, 'injection': injection}
 
 
 def stop_replay_server(server):
-  print("SHUTTING DOWN REPLAY SERVER %s" % server['process'].pid)
+  print(f"SHUTTING DOWN REPLAY SERVER {server['process'].pid}")
   server['process'].terminate()
   os.remove(server['injection'])
 
@@ -138,13 +139,11 @@ def get_chrome_flags(js_flags, user_data_dir, arg_delimiter=""):
       "--disable-translate",
       "--enable-benchmarking",
       "--enable-stats-table",
-      "--js-flags={}{}{}".format(arg_delimiter, js_flags, arg_delimiter),
+      f"--js-flags={arg_delimiter}{js_flags}{arg_delimiter}",
       "--no-first-run",
-      "--user-data-dir={}{}{}".format(arg_delimiter, user_data_dir,
-                                      arg_delimiter),
-      "--data-path={}{}{}".format(arg_delimiter,
-          os.path.join(user_data_dir, 'content-shell-data'), arg_delimiter),
-    ]
+      f"--user-data-dir={arg_delimiter}{user_data_dir}{arg_delimiter}",
+      f"--data-path={arg_delimiter}{os.path.join(user_data_dir, 'content-shell-data')}{arg_delimiter}",
+  ]
 
 def get_chrome_replay_flags(args, arg_delimiter=""):
   http_port = 4080 + args.port_offset
@@ -164,7 +163,7 @@ def get_chrome_replay_flags(args, arg_delimiter=""):
 
 def run_site(site, domain, args, timeout=None):
   print("="*80)
-  print("RUNNING DOMAIN %s" % domain)
+  print(f"RUNNING DOMAIN {domain}")
   print("="*80)
   result_template = "{domain}#{count}.txt" if args.repeat else "{domain}.txt"
   count = 0
@@ -186,7 +185,8 @@ def run_site(site, domain, args, timeout=None):
           user_data_dir = tempfile.mkdtemp(prefix="chr_")
         js_flags = "--runtime-call-stats"
         if args.replay_wpr: js_flags += " --allow-natives-syntax"
-        if args.js_flags: js_flags += " " + args.js_flags
+        if args.js_flags:
+          js_flags += f" {args.js_flags}"
         chrome_flags = get_chrome_flags(js_flags, user_data_dir)
         if args.replay_wpr:
           chrome_flags += get_chrome_replay_flags(args)
@@ -207,7 +207,7 @@ def run_site(site, domain, args, timeout=None):
         # 124 means timeout killed chrome, 0 means the user was bored first!
         # If none of these two happened, then chrome apparently crashed, so
         # it must be called again.
-        if status != 124 and status != 0:
+        if status not in [124, 0]:
           print("CHROME CRASHED, REPEATING RUN");
           continue
         # If the stats file is empty, chrome must be called again.
@@ -215,7 +215,7 @@ def run_site(site, domain, args, timeout=None):
           if args.print_url:
             with open(result, "at") as f:
               print(file=f)
-              print("URL: {}".format(site), file=f)
+              print(f"URL: {site}", file=f)
           retries_since_good_run = 0
           break
         if retries_since_good_run > MAX_NOF_RETRIES:
@@ -225,8 +225,7 @@ def run_site(site, domain, args, timeout=None):
           return
         timeout += 2 ** retries_since_good_run
         retries_since_good_run += 1
-        print("EMPTY RESULT, REPEATING RUN ({})".format(
-            retries_since_good_run));
+        print(f"EMPTY RESULT, REPEATING RUN ({retries_since_good_run})");
       finally:
         if not args.user_data_dir:
           shutil.rmtree(user_data_dir)
@@ -241,7 +240,7 @@ def read_sites_file(args):
           if 'timeout' not in item:
             # This is more-or-less arbitrary.
             item['timeout'] = int(1.5 * item['timeline'] + 7)
-          if item['timeout'] > args.timeout: item['timeout'] = args.timeout
+          item['timeout'] = min(item['timeout'], args.timeout)
           sites.append(item)
     except ValueError:
       args.error("Warning: Could not read sites file as JSON, falling back to "
@@ -253,7 +252,7 @@ def read_sites_file(args):
           sites.append({'url': line, 'timeout': args.timeout})
     return sites
   except IOError as e:
-    args.error("Cannot read from {}. {}.".format(args.sites_file, e.strerror))
+    args.error(f"Cannot read from {args.sites_file}. {e.strerror}.")
     sys.exit(1)
 
 
@@ -279,9 +278,9 @@ def do_run(args):
     else:
       m = re.match(r'^(https?://)?([^/]+)(/.*)?$', site)
       if not m:
-        args.error("Invalid URL {}.".format(site))
+        args.error(f"Invalid URL {site}.")
         continue
-      domain = m.group(2)
+      domain = m[2]
     entry = [site, domain, None, item['timeout']]
     if domain not in domains:
       domains[domain] = entry
@@ -295,7 +294,8 @@ def do_run(args):
   try:
     # Run them.
     for site, domain, count, timeout in L:
-      if count is not None: domain = "{}%{}".format(domain, count)
+      if count is not None:
+        domain = f"{domain}%{count}"
       print((site, domain, timeout))
       run_site(site, domain, args, timeout)
   finally:
@@ -362,10 +362,10 @@ def statistics(data):
 def add_category_total(entries, groups, category_prefix):
   group_data = { 'time': 0, 'count': 0 }
   for group_name, regexp in groups:
-    if not group_name.startswith('Group-' + category_prefix): continue
+    if not group_name.startswith(f'Group-{category_prefix}'): continue
     group_data['time'] += entries[group_name]['time']
     group_data['count'] += entries[group_name]['count']
-  entries['Group-' + category_prefix + '-Total'] = group_data
+  entries[f'Group-{category_prefix}-Total'] = group_data
 
 
 def read_stats(path, domain, args):
@@ -496,8 +496,7 @@ def print_stats(S, args):
 def extract_domain(filename):
   # Extract domain name: domain#123.txt or domain_123.txt
   match = re.match(r'^(.*?)[^a-zA-Z]?[0-9]+?.txt', filename)
-  domain = match.group(1)
-  return domain
+  return match[1]
 
 
 def do_stats(args):
@@ -512,7 +511,7 @@ def do_stats(args):
   for i, domain in enumerate(sorted(domains)):
     if len(domains) > 1:
       if i > 0: print()
-      print("{}:".format(domain))
+      print(f"{domain}:")
       print('=' * 80)
     domain_stats = domains[domain]
     for key in domain_stats:
@@ -578,16 +577,11 @@ def do_raw_json(args):
     if args.aggregate:
       create_total_page_stats(domains, args)
     for domain, entries in domains.items():
-      raw_entries = []
-      for name, value in entries.items():
-        # We don't want the calculated sum in the JSON file.
-        if name == "Sum": continue
-        raw_entries.append({
+      raw_entries = [{
           'name': name,
           'duration': value['time_list'],
           'count': value['count_list'],
-        })
-
+      } for name, value in entries.items() if name != "Sum"]
       domains[domain] = raw_entries
 
   print(json.dumps(versions, separators=(',', ':')))
@@ -609,9 +603,11 @@ def do_json(args):
         entry = [name]
         for x in ['time_list', 'count_list']:
           s = statistics(entries[name][x])
-          entry.append(round(s['average'], 1))
-          entry.append(round(s['ci']['abs'], 1))
-          entry.append(round(s['ci']['perc'], 2))
+          entry.extend((
+              round(s['average'], 1),
+              round(s['ci']['abs'], 1),
+              round(s['ci']['perc'], 2),
+          ))
         stats.append(entry)
       domains[domain] = stats
   print(json.dumps(versions, separators=(',', ':')))
@@ -624,7 +620,7 @@ def do_help(parser, subparsers, args):
     if args.help_cmd in subparsers:
       subparsers[args.help_cmd].print_help()
     else:
-      args.error("Unknown command '{}'".format(args.help_cmd))
+      args.error(f"Unknown command '{args.help_cmd}'")
   else:
     parser.print_help()
 
@@ -633,7 +629,7 @@ def do_help(parser, subparsers, args):
 
 def coexist(*l):
   given = sum(1 for x in l if x)
-  return given == 0 or given == len(l)
+  return given in [0, len(l)]
 
 def main():
   parser = argparse.ArgumentParser()

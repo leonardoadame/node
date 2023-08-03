@@ -64,4 +64,4 @@ class TestCase(testcase.TestCase):
 
   def get_shell(self):
     group, _ = self.path.split(os.path.sep, 1)
-    return 'v8_simple_%s_fuzzer' % group
+    return f'v8_simple_{group}_fuzzer'

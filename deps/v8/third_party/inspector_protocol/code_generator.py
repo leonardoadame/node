@@ -55,9 +55,9 @@ def read_config():
     values = [getattr(config_tuple, k) for k in keys]
     for i in range(len(keys)):
       if hasattr(values[i], "_fields"):
-        values[i] = init_defaults(values[i], path + "." + keys[i], defaults)
+        values[i] = init_defaults(values[i], f"{path}.{keys[i]}", defaults)
     for optional in defaults:
-      if optional.find(path + ".") != 0:
+      if optional.find(f"{path}.") != 0:
         continue
       optional_key = optional[len(path) + 1:]
       if optional_key.find(".") == -1 and optional_key not in keys:
@@ -89,11 +89,10 @@ def read_config():
     exit(1)
 
   try:
-    config_json_file = open(config_file, "r")
-    config_json_string = config_json_file.read()
-    config_partial = json_to_object(config_json_string, output_base,
-                                    config_base)
-    config_json_file.close()
+    with open(config_file, "r") as config_json_file:
+      config_json_string = config_json_file.read()
+      config_partial = json_to_object(config_json_string, output_base,
+                                      config_base)
     defaults = {
         ".use_snake_file_names": False,
         ".use_title_case_methods": False,
@@ -121,7 +120,7 @@ def read_config():
     for key_value in config_values:
       parts = key_value.split("=")
       if len(parts) == 2:
-        defaults["." + parts[0]] = parts[1]
+        defaults[f".{parts[0]}"] = parts[1]
     return (jinja_dir, config_file, init_defaults(config_partial, "", defaults))
   except Exception:
     # Work with python 2 and 3 http://docs.python.org/py3k/howto/pyporting.html
@@ -151,9 +150,7 @@ def to_snake_case(name):
 
 
 def to_method_case(config, name):
-  if config.use_title_case_methods:
-    return to_title_case(name)
-  return name
+  return to_title_case(name) if config.use_title_case_methods else name
 
 
 def join_arrays(dict, keys):
@@ -166,7 +163,7 @@ def join_arrays(dict, keys):
 
 def format_include(config, header, file_name=None):
   if file_name is not None:
-    header = header + "/" + file_name + ".h"
+    header = f"{header}/{file_name}.h"
   header = "\"" + header + "\"" if header[0] not in "<\"" else header
   if config.use_snake_file_names:
     header = to_snake_case(header)
@@ -211,38 +208,39 @@ def initialize_jinja_env(jinja_dir, cache_dir, config):
 def create_imported_type_definition(domain_name, type, imported_namespace):
   # pylint: disable=W0622
   return {
-    "return_type": "std::unique_ptr<%s::%s::API::%s>" % (
-        imported_namespace, domain_name, type["id"]),
-    "pass_type": "std::unique_ptr<%s::%s::API::%s>" % (
-        imported_namespace, domain_name, type["id"]),
-    "to_raw_type": "%s.get()",
-    "to_pass_type": "std::move(%s)",
-    "to_rvalue": "std::move(%s)",
-    "type": "std::unique_ptr<%s::%s::API::%s>" % (
-        imported_namespace, domain_name, type["id"]),
-    "raw_type": "%s::%s::API::%s" % (
-        imported_namespace, domain_name, type["id"]),
-    "raw_pass_type": "%s::%s::API::%s*" % (
-        imported_namespace, domain_name, type["id"]),
-    "raw_return_type": "%s::%s::API::%s*" % (
-        imported_namespace, domain_name, type["id"]),
+      "return_type":
+      f'std::unique_ptr<{imported_namespace}::{domain_name}::API::{type["id"]}>',
+      "pass_type":
+      f'std::unique_ptr<{imported_namespace}::{domain_name}::API::{type["id"]}>',
+      "to_raw_type":
+      "%s.get()",
+      "to_pass_type":
+      "std::move(%s)",
+      "to_rvalue":
+      "std::move(%s)",
+      "type":
+      f'std::unique_ptr<{imported_namespace}::{domain_name}::API::{type["id"]}>',
+      "raw_type":
+      f'{imported_namespace}::{domain_name}::API::{type["id"]}',
+      "raw_pass_type":
+      f'{imported_namespace}::{domain_name}::API::{type["id"]}*',
+      "raw_return_type":
+      f'{imported_namespace}::{domain_name}::API::{type["id"]}*',
   }
 
 
 def create_user_type_definition(domain_name, type):
   # pylint: disable=W0622
   return {
-    "return_type": "std::unique_ptr<protocol::%s::%s>" % (
-        domain_name, type["id"]),
-    "pass_type": "std::unique_ptr<protocol::%s::%s>" % (
-        domain_name, type["id"]),
-    "to_raw_type": "%s.get()",
-    "to_pass_type": "std::move(%s)",
-    "to_rvalue": "std::move(%s)",
-    "type": "std::unique_ptr<protocol::%s::%s>" % (domain_name, type["id"]),
-    "raw_type": "protocol::%s::%s" % (domain_name, type["id"]),
-    "raw_pass_type": "protocol::%s::%s*" % (domain_name, type["id"]),
-    "raw_return_type": "protocol::%s::%s*" % (domain_name, type["id"]),
+      "return_type": f'std::unique_ptr<protocol::{domain_name}::{type["id"]}>',
+      "pass_type": f'std::unique_ptr<protocol::{domain_name}::{type["id"]}>',
+      "to_raw_type": "%s.get()",
+      "to_pass_type": "std::move(%s)",
+      "to_rvalue": "std::move(%s)",
+      "type": f'std::unique_ptr<protocol::{domain_name}::{type["id"]}>',
+      "raw_type": f'protocol::{domain_name}::{type["id"]}',
+      "raw_pass_type": f'protocol::{domain_name}::{type["id"]}*',
+      "raw_return_type": f'protocol::{domain_name}::{type["id"]}*',
   }
 
 
@@ -341,16 +339,16 @@ def create_primitive_type_definition(type):
 def wrap_array_definition(type):
   # pylint: disable=W0622
   return {
-    "return_type": "std::unique_ptr<protocol::Array<%s>>" % type["raw_type"],
-    "pass_type": "std::unique_ptr<protocol::Array<%s>>" % type["raw_type"],
-    "to_raw_type": "%s.get()",
-    "to_pass_type": "std::move(%s)",
-    "to_rvalue": "std::move(%s)",
-    "type": "std::unique_ptr<protocol::Array<%s>>" % type["raw_type"],
-    "raw_type": "protocol::Array<%s>" % type["raw_type"],
-    "raw_pass_type": "protocol::Array<%s>*" % type["raw_type"],
-    "raw_return_type": "protocol::Array<%s>*" % type["raw_type"],
-    "out_type": "protocol::Array<%s>&" % type["raw_type"],
+      "return_type": f'std::unique_ptr<protocol::Array<{type["raw_type"]}>>',
+      "pass_type": f'std::unique_ptr<protocol::Array<{type["raw_type"]}>>',
+      "to_raw_type": "%s.get()",
+      "to_pass_type": "std::move(%s)",
+      "to_rvalue": "std::move(%s)",
+      "type": f'std::unique_ptr<protocol::Array<{type["raw_type"]}>>',
+      "raw_type": f'protocol::Array<{type["raw_type"]}>',
+      "raw_pass_type": f'protocol::Array<{type["raw_type"]}>*',
+      "raw_return_type": f'protocol::Array<{type["raw_type"]}>*',
+      "out_type": f'protocol::Array<{type["raw_type"]}>&',
   }
 
 
@@ -379,11 +377,10 @@ class Protocol(object):
     self.generate_used_types()
 
   def read_protocol_file(self, file_name):
-    input_file = open(file_name, "r")
-    parsed_json = pdl.loads(input_file.read(), file_name)
-    input_file.close()
-    version = '%s.%s' % (parsed_json["version"]["major"],
-                         parsed_json["version"]["minor"])
+    with open(file_name, "r") as input_file:
+      parsed_json = pdl.loads(input_file.read(), file_name)
+    version = (
+        f'{parsed_json["version"]["major"]}.{parsed_json["version"]["minor"]}')
     domains = []
     for domain in parsed_json["domains"]:
       domains.append(domain["domain"])
@@ -400,12 +397,12 @@ class Protocol(object):
         return
       for key in json:
         if key == "type" and json[key] == "string":
-          json[key] = domain_name + ".string"
+          json[key] = f"{domain_name}.string"
         if key != "$ref":
           patch_full_qualified_refs_in_domain(json[key], domain_name)
           continue
         if json["$ref"].find(".") == -1:
-          json["$ref"] = domain_name + "." + json["$ref"]
+          json["$ref"] = f"{domain_name}." + json["$ref"]
       return
 
     for domain in self.json_api["domains"]:
@@ -431,11 +428,10 @@ class Protocol(object):
       type_definition = self.type_definitions[ref]
       if type_definition.get('is_primitive', False):
         continue
-      domain_match = re.match(r'^(.*)[.]', ref)
-      if domain_match:
-        referenced_domain_name = domain_match.group(1)
-        if referenced_domain_name != domain[
-            'domain'] and not referenced_domain_name in dependencies:
+      if domain_match := re.match(r'^(.*)[.]', ref):
+        referenced_domain_name = domain_match[1]
+        if (referenced_domain_name != domain['domain']
+            and referenced_domain_name not in dependencies):
           sys.stderr.write((
               "Domains [%s] uses type [%s] from domain [%s], but did not declare the dependency\n\n"
           ) % (domain["domain"], ref, referenced_domain_name))
@@ -472,22 +468,21 @@ class Protocol(object):
     self.used_types = all_refs
 
   def generate_type_dependencies(self):
-    dependencies = dict()
+    dependencies = {}
     domains_with_types = (x for x in self.json_api["domains"] if "types" in x)
     for domain in domains_with_types:
       domain_name = domain["domain"]
       for type in domain["types"]:
         related_types = self.all_references(type)
         if len(related_types):
-          dependencies[domain_name + "." + type["id"]] = related_types
+          dependencies[f"{domain_name}." + type["id"]] = related_types
     return dependencies
 
   def create_type_definitions(self):
     imported_namespace = ""
     if self.config.imported:
       imported_namespace = "::".join(self.config.imported.namespace)
-    self.type_definitions = {}
-    self.type_definitions["number"] = create_primitive_type_definition("number")
+    self.type_definitions = {"number": create_primitive_type_definition("number")}
     self.type_definitions["integer"] = create_primitive_type_definition("integer")
     self.type_definitions["boolean"] = create_primitive_type_definition("boolean")
     self.type_definitions["object"] = create_object_type_definition()
@@ -498,7 +493,7 @@ class Protocol(object):
           create_string_type_definition())
       self.type_definitions[domain["domain"] + ".binary"] = (
           create_binary_type_definition())
-      if not ("types" in domain):
+      if "types" not in domain:
         continue
       for type in domain["types"]:
         type_name = domain["domain"] + "." + type["id"]
@@ -556,7 +551,7 @@ class Protocol(object):
                               "include_events", "exclude_events", True)
 
   def generate_type(self, domain, typename):
-    return domain + "." + typename in self.used_types
+    return f"{domain}.{typename}" in self.used_types
 
   def is_async_command(self, domain, command):
     if not self.config.protocol.options:
@@ -584,11 +579,9 @@ class Protocol(object):
   def generate_disable(self, domain):
     if "commands" not in domain:
       return True
-    for command in domain["commands"]:
-      if command["name"] == "disable" and self.generate_command(
-          domain["domain"], "disable"):
-        return False
-    return True
+    return not any(command["name"] == "disable"
+                   and self.generate_command(domain["domain"], "disable")
+                   for command in domain["commands"])
 
   def is_imported_dependency(self, domain):
     return domain in self.generate_domains or domain in self.imported_domains
@@ -628,7 +621,7 @@ def main():
   exported_template = jinja_env.get_template("templates/Exported_h.template")
   imported_template = jinja_env.get_template("templates/Imported_h.template")
 
-  outputs = dict()
+  outputs = {}
 
   for domain in protocol.json_api["domains"]:
     class_name = domain["domain"]
@@ -643,18 +636,24 @@ def main():
     }
 
     if domain["domain"] in protocol.generate_domains:
-      outputs[os.path.join(config.protocol.output, to_file_name(
-          config, file_name + ".h"))] = h_template.render(template_context)
-      outputs[os.path.join(config.protocol.output, to_file_name(
-          config, file_name + ".cpp"))] = cpp_template.render(template_context)
+      outputs[os.path.join(
+          config.protocol.output, to_file_name(
+              config, f"{file_name}.h"))] = h_template.render(template_context)
+      outputs[os.path.join(
+          config.protocol.output, to_file_name(
+              config,
+              f"{file_name}.cpp"))] = cpp_template.render(template_context)
       if domain["domain"] in protocol.exported_domains:
-        outputs[os.path.join(config.exported.output, to_file_name(
-            config, file_name + ".h"))] = exported_template.render(
-                template_context)
+        outputs[os.path.join(
+            config.exported.output,
+            to_file_name(config,
+                         f"{file_name}.h"))] = exported_template.render(
+                             template_context)
     if domain["domain"] in protocol.imported_domains:
-      outputs[os.path.join(config.protocol.output, to_file_name(
-          config, file_name + ".h"))] = imported_template.render(
-              template_context)
+      outputs[os.path.join(
+          config.protocol.output, to_file_name(
+              config,
+              f"{file_name}.h"))] = imported_template.render(template_context)
 
   if config.lib:
     template_context = {
@@ -695,7 +694,7 @@ def main():
       parts = []
       for template_file in template_files:
         inputs.append(os.path.join(lib_templates_dir, template_file))
-        template = jinja_env.get_template("lib/" + template_file)
+        template = jinja_env.get_template(f"lib/{template_file}")
         parts.append(template.render(template_context))
       outputs[file_name] = "\n\n".join(parts)
 
@@ -712,7 +711,7 @@ def main():
   # Make gyp / make generatos happy, otherwise make rebuilds world.
   inputs_ts = max(map(os.path.getmtime, inputs))
   up_to_date = True
-  for output_file in outputs.keys():
+  for output_file in outputs:
     if (not os.path.exists(output_file)
         or os.path.getmtime(output_file) < inputs_ts):
       up_to_date = False
@@ -726,9 +725,8 @@ def main():
       os.remove(file_name)
     except OSError:
       pass
-    out_file = open(file_name, "w")
-    out_file.write(content)
-    out_file.close()
+    with open(file_name, "w") as out_file:
+      out_file.write(content)
 
 
 if __name__ == "__main__":

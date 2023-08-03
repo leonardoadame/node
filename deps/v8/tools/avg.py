@@ -128,11 +128,7 @@ class Measurement:
       print("Ignoring non-numeric value", value)
 
   def status(self, widths):
-    return "{} {}: avg {} stddev {} ({} - {}) {}".format(
-        fmt_reps(self),
-        fmtS(self.key, widths.key), fmtN(self.average, widths.average),
-        fmtN(self.stddev(), widths.stddev), fmtN(self.min, widths.min),
-        fmtN(self.max, widths.max), fmtS(self.unit_string()))
+    return f"{fmt_reps(self)} {fmtS(self.key, widths.key)}: avg {fmtN(self.average, widths.average)} stddev {fmtN(self.stddev(), widths.stddev)} ({fmtN(self.min, widths.min)} - {fmtN(self.max, widths.max)}) {fmtS(self.unit_string())}"
 
   def result(self, widths):
     return format_line(self.size(), self.key, fmt(self.average),
@@ -141,14 +137,10 @@ class Measurement:
                        widths)
 
   def unit_string(self):
-    if not self.unit:
-      return ""
-    return self.unit
+    return "" if not self.unit else self.unit
 
   def variance(self):
-    if self.count < 2:
-      return float('NaN')
-    return self.M2 / (self.count - 1)
+    return float('NaN') if self.count < 2 else self.M2 / (self.count - 1)
 
   def stddev(self):
     return math.sqrt(self.variance())
@@ -158,17 +150,26 @@ class Measurement:
 
   def widths(self):
     return FieldWidth(
-        points=len("{}".format(self.size())) + 2,
+        points=len(f"{self.size()}") + 2,
         key=len(self.key),
         average=len(fmt(self.average)),
         stddev=len(fmt(self.stddev())),
         min_width=len(fmt(self.min)),
-        max_width=len(fmt(self.max)))
+        max_width=len(fmt(self.max)),
+    )
 
 
 def result_header(widths):
-  return format_line("#/{}".format(ARGS['repetitions']),
-                     "id", "avg", "stddev", "min", "max", "unit", widths)
+  return format_line(
+      f"#/{ARGS['repetitions']}",
+      "id",
+      "avg",
+      "stddev",
+      "min",
+      "max",
+      "unit",
+      widths,
+  )
 
 
 class Measurements:
@@ -177,12 +178,13 @@ class Measurements:
     self.all = {}
     self.default_key = '[default]'
     self.max_widths = FieldWidth(
-        points=len("{}".format(ARGS['repetitions'])) + 2,
+        points=len(f"{ARGS['repetitions']}") + 2,
         key=len("id"),
         average=len("avg"),
         stddev=len("stddev"),
         min_width=len("min"),
-        max_width=len("max"))
+        max_width=len("max"),
+    )
     self.last_status_len = 0
 
   def record(self, key, value, unit):
@@ -194,9 +196,7 @@ class Measurements:
     self.max_widths.max_widths(self.all[key].widths())
 
   def any(self):
-    if self.all:
-      return next(iter(self.all.values()))
-    return None
+    return next(iter(self.all.values())) if self.all else None
 
   def print_results(self):
     print("{:<{}}".format("", self.last_status_len), end="\r")
@@ -206,8 +206,7 @@ class Measurements:
 
   def print_status(self):
     status = "No results found. Check format?"
-    measurement = MEASUREMENTS.any()
-    if measurement:
+    if measurement := MEASUREMENTS.any():
       status = measurement.status(MEASUREMENTS.max_widths)
     print("{:<{}}".format(status, self.last_status_len), end="\r")
     self.last_status_len = len(status)
@@ -230,7 +229,7 @@ SCORE_REGEX = (r'\A((console.timeEnd: )?'
                r'(?P<value>[0-9]+(.[0-9]+)?)'
                r'\ ?(?P<unit>[^\d\W]\w*)?[.\s]*\Z')
 
-for x in range(0, ARGS['repetitions']):
+for _ in range(0, ARGS['repetitions']):
   proc = subprocess.Popen(ARGS['command'], stdout=subprocess.PIPE)
   for line in proc.stdout:
     if ARGS['echo']:

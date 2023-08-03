@@ -81,8 +81,7 @@ def parse(data, file_name, map_binary_to_string=False):
     match = re.compile(
         r'^(experimental )?(deprecated )?domain (.*)').match(line)
     if match:
-      domain = createItem({'domain' : match.group(3)}, match.group(1),
-                          match.group(2))
+      domain = createItem({'domain': match[3]}, match[1], match[2])
       protocol['domains'].append(domain)
       continue
 
@@ -90,7 +89,7 @@ def parse(data, file_name, map_binary_to_string=False):
     if match:
       if 'dependencies' not in domain:
         domain['dependencies'] = []
-      domain['dependencies'].append(match.group(1))
+      domain['dependencies'].append(match[1])
       continue
 
     match = re.compile(r'^  (experimental )?(deprecated )?type (.*) '
@@ -98,8 +97,8 @@ def parse(data, file_name, map_binary_to_string=False):
     if match:
       if 'types' not in domain:
         domain['types'] = []
-      item = createItem({'id': match.group(3)}, match.group(1), match.group(2))
-      assignType(item, match.group(5), match.group(4), map_binary_to_string)
+      item = createItem({'id': match[3]}, match[1], match[2])
+      assignType(item, match[5], match[4], map_binary_to_string)
       domain['types'].append(item)
       continue
 
@@ -107,18 +106,17 @@ def parse(data, file_name, map_binary_to_string=False):
         r'^  (experimental )?(deprecated )?(command|event) (.*)').match(line)
     if match:
       list = []
-      if match.group(3) == 'command':
+      if match[3] == 'command':
         if 'commands' in domain:
           list = domain['commands']
         else:
           list = domain['commands'] = []
+      elif 'events' in domain:
+        list = domain['events']
       else:
-        if 'events' in domain:
-          list = domain['events']
-        else:
-          list = domain['events'] = []
+        list = domain['events'] = []
 
-      item = createItem({}, match.group(1), match.group(2), match.group(4))
+      item = createItem({}, match[1], match[2], match[4])
       list.append(item)
       continue
 
@@ -126,18 +124,18 @@ def parse(data, file_name, map_binary_to_string=False):
         r'^      (experimental )?(deprecated )?(optional )?'
         r'(array of )?([^\s]+) ([^\s]+)').match(line)
     if match:
-      param = createItem({}, match.group(1), match.group(2), match.group(6))
-      if match.group(3):
+      param = createItem({}, match[1], match[2], match[6])
+      if match[3]:
         param['optional'] = True
-      assignType(param, match.group(5), match.group(4), map_binary_to_string)
-      if match.group(5) == 'enum':
+      assignType(param, match[5], match[4], map_binary_to_string)
+      if match[5] == 'enum':
         enumliterals = param['enum'] = []
       subitems.append(param)
       continue
 
     match = re.compile(r'^    (parameters|returns|properties)').match(line)
     if match:
-      subitems = item[match.group(1)] = []
+      subitems = item[match[1]] = []
       continue
 
     match = re.compile(r'^    enum').match(line)
@@ -149,23 +147,19 @@ def parse(data, file_name, map_binary_to_string=False):
     if match:
       continue
 
-    match = re.compile(r'^  major (\d+)').match(line)
-    if match:
-      protocol['version']['major'] = match.group(1)
+    if match := re.compile(r'^  major (\d+)').match(line):
+      protocol['version']['major'] = match[1]
       continue
 
-    match = re.compile(r'^  minor (\d+)').match(line)
-    if match:
-      protocol['version']['minor'] = match.group(1)
+    if match := re.compile(r'^  minor (\d+)').match(line):
+      protocol['version']['minor'] = match[1]
       continue
 
-    match = re.compile(r'^    redirect ([^\s]+)').match(line)
-    if match:
-      item['redirect'] = match.group(1)
+    if match := re.compile(r'^    redirect ([^\s]+)').match(line):
+      item['redirect'] = match[1]
       continue
 
-    match = re.compile(r'^      (  )?[^\s]+$').match(line)
-    if match:
+    if match := re.compile(r'^      (  )?[^\s]+$').match(line):
       # enum literal
       enumliterals.append(trimLine)
       continue

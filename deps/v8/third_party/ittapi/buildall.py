@@ -143,7 +143,7 @@ def main():
 
         if sys.platform == 'win32':
             if vs_versions:
-                generator = ('Visual Studio %s' % args.vs) + (' Win64' if bits == '64' else '')
+                generator = f'Visual Studio {args.vs}' + (' Win64' if bits == '64' else '')
             else:
                 generator = 'Ninja'
         else:
@@ -156,13 +156,17 @@ def main():
         ])))
         if sys.platform == 'win32':
             target_project = 'ALL_BUILD'
-            run_shell('%s --build . --config %s --target %s' % (cmake, ('Debug' if args.debug else 'Release'), target_project))
+            run_shell(
+                f"{cmake} --build . --config {'Debug' if args.debug else 'Release'} --target {target_project}"
+            )
         else:
             import glob
-            run_shell('%s --build . --config %s' % (cmake, ('Debug' if args.debug else 'Release')))
+            run_shell(f"{cmake} --build . --config {'Debug' if args.debug else 'Release'}")
             if ('linux' in sys.platform and bits == '64'):
                 continue
-            run_shell('%s --build . --config %s --target' % (cmake, ('Debug' if args.debug else 'Release')))
+            run_shell(
+                f"{cmake} --build . --config {'Debug' if args.debug else 'Release'} --target"
+            )
 
 if __name__== "__main__":
     main()

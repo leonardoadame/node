@@ -56,9 +56,7 @@ class TestCase(testcase.D8TestCase):
     self._source_flags = self._parse_source_flags(source)
 
   def _parse_source_files(self, source):
-    files = []
-    files.append(self._get_source_path())
-    return files
+    return [self._get_source_path()]
 
   def _expected_fail(self):
     path = self.path
@@ -85,7 +83,7 @@ class TestCase(testcase.D8TestCase):
     # the extension in the first place.
     if os.path.exists(self._base_path + self._get_suffix()):
       return self._base_path + self._get_suffix()
-    return self._base_path + '.mjs'
+    return f'{self._base_path}.mjs'
 
   def skip_predictable(self):
     # Message tests expected to fail don't print allocation output for
@@ -94,8 +92,10 @@ class TestCase(testcase.D8TestCase):
 
   @property
   def output_proc(self):
-    return message.OutProc(self.expected_outcomes,
-                           self._base_path,
-                           self._expected_fail(),
-                           self._base_path + '.out',
-                           self.test_config.regenerate_expected_files)
+    return message.OutProc(
+        self.expected_outcomes,
+        self._base_path,
+        self._expected_fail(),
+        f'{self._base_path}.out',
+        self.test_config.regenerate_expected_files,
+    )

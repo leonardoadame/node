@@ -48,7 +48,8 @@ class TestCase(testcase.D8TestCase):
     return [os.path.join(self.suite.test_root, self.path + self._get_suffix())]
 
   def _get_source_flags(self):
-    for proposal in proposal_flags:
-      if os.sep.join(['proposals', proposal['name']]) in self.path:
-        return proposal['flags']
-    return []
+    return next(
+        (proposal['flags'] for proposal in proposal_flags
+         if os.sep.join(['proposals', proposal['name']]) in self.path),
+        [],
+    )

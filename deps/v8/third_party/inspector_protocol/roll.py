@@ -75,30 +75,30 @@ def CheckRepoIsClean(path, suffix):
   # And if it is a git repo and 'git status' has anything interesting to say,
   # then it's not clean (uncommitted files etc.)
   if len(RunCmd(['git', 'status', '--porcelain'])) != 0:
-    raise Exception('%s is not a clean git repo (run git status)' % path)
+    raise Exception(f'{path} is not a clean git repo (run git status)')
   if not path.endswith(suffix):
-    raise Exception('%s does not end with /%s' % (path, suffix))
+    raise Exception(f'{path} does not end with /{suffix}')
 
 
 def CheckRepoIsNotAtMasterBranch(path):
   os.chdir(path)
   stdout = RunCmd(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip()
   if stdout == 'master':
-    raise Exception('%s is at master branch - refusing to copy there.' % path)
+    raise Exception(f'{path} is at master branch - refusing to copy there.')
 
 
 def CheckRepoIsV8Checkout(path):
   os.chdir(path)
   if (RunCmd(['git', 'config', '--get', 'remote.origin.url']).strip() !=
       'https://chromium.googlesource.com/v8/v8.git'):
-    raise Exception('%s is not a proper V8 checkout.' % path)
+    raise Exception(f'{path} is not a proper V8 checkout.')
 
 
 def CheckRepoIsInspectorProtocolCheckout(path):
   os.chdir(path)
   if (RunCmd(['git', 'config', '--get', 'remote.origin.url']).strip() !=
       'https://chromium.googlesource.com/deps/inspector_protocol.git'):
-    raise Exception('%s is not a proper inspector_protocol checkout.' % path)
+    raise Exception(f'{path} is not a proper inspector_protocol checkout.')
 
 
 def FindFilesToSyncIn(path):
@@ -149,7 +149,7 @@ def main(argv):
   CheckRepoIsNotAtMasterBranch(downstream)
   src_dir = upstream
   dest_dir = os.path.join(downstream, 'third_party/inspector_protocol')
-  print('Rolling %s into %s ...' % (src_dir, dest_dir))
+  print(f'Rolling {src_dir} into {dest_dir} ...')
   src_files = set(FindFilesToSyncIn(src_dir))
   dest_files = set(FindFilesToSyncIn(dest_dir))
   to_add = [f for f in src_files if f not in dest_files]
@@ -157,9 +157,9 @@ def main(argv):
   to_copy = [f for f in src_files
              if (f in dest_files and not FilesAreEqual(
                  os.path.join(src_dir, f), os.path.join(dest_dir, f)))]
-  print('To add: %s' % to_add)
-  print('To delete: %s' % to_delete)
-  print('To copy: %s' % to_copy)
+  print(f'To add: {to_add}')
+  print(f'To delete: {to_delete}')
+  print(f'To copy: {to_copy}')
   if not to_add and not to_delete and not to_copy:
     print('Nothing to do. You\'re good.')
     sys.exit(0)
@@ -182,13 +182,12 @@ def main(argv):
     os.unlink(os.path.join(dest_dir, f))
   head_revision = GetHeadRevision(upstream)
   lines = open(os.path.join(dest_dir, 'README.v8')).readlines()
-  f = open(os.path.join(dest_dir, 'README.v8'), 'w')
-  for line in lines:
-    if line.startswith('Revision: '):
-      f.write('Revision: %s' % head_revision)
-    else:
-      f.write(line)
-  f.close()
+  with open(os.path.join(dest_dir, 'README.v8'), 'w') as f:
+    for line in lines:
+      if line.startswith('Revision: '):
+        f.write(f'Revision: {head_revision}')
+      else:
+        f.write(line)
 
 
 if __name__ == '__main__':

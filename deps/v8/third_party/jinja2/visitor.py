@@ -86,7 +86,4 @@ class NodeTransformer(NodeVisitor):
         """
         rv = self.visit(node, *args, **kwargs)
 
-        if not isinstance(rv, list):
-            return [rv]
-
-        return rv
+        return [rv] if not isinstance(rv, list) else rv

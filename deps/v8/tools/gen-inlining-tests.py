@@ -243,14 +243,13 @@ def printtest(flags):
     return
 
   # In try, return or throw, or both.
-  if not (tryReturns or tryThrows): return
+  if not tryReturns and not tryThrows: return
 
-  # Either doCatch or doFinally.
-  if not doCatch and not doFinally: return
-
-  # Catch flags only make sense when catching
-  if not doCatch and (catchReturns or catchWithLocal or catchThrows):
-    return
+  if not doCatch:
+    if not doFinally:
+      return
+    if (catchReturns or catchWithLocal or catchThrows):
+      return
 
   # Finally flags only make sense when finallying
   if not doFinally and (finallyReturns or finallyThrows):
@@ -258,14 +257,14 @@ def printtest(flags):
 
   # tryFirstReturns is only relevant when both tryReturns and tryThrows are
   # true.
-  if tryFirstReturns and not (tryReturns and tryThrows): return
+  if tryFirstReturns and (not tryReturns or not tryThrows): return
 
   # From the try and finally block, we can return or throw, but not both.
   if catchReturns and catchThrows: return
   if finallyReturns and finallyThrows: return
 
   # If at the end we return the local, we need to have touched it.
-  if endReturnLocal and not (tryResultToLocal or catchWithLocal): return
+  if endReturnLocal and not tryResultToLocal and not catchWithLocal: return
 
   # PRUNING
 
@@ -298,7 +297,7 @@ def printtest(flags):
   # Flag check succeeded.
 
   trueFlagNames = [name for (name, value) in flags._asdict().items() if value]
-  flagsMsgLine = "  // Variant flags: [{}]".format(', '.join(trueFlagNames))
+  flagsMsgLine = f"  // Variant flags: [{', '.join(trueFlagNames)}]"
   write(textwrap.fill(flagsMsgLine, subsequent_indent='  //   '))
   write("")
 
@@ -342,21 +341,17 @@ def printtest(flags):
   # - ("throw", n), with n an integer
 
   result = None
-  # We also maintain what the counter should be at the end.
-  # The counter is reset just before f is called.
-  counter = 0
-
-  write(    "  f = function {} () {{".format(fnname(flags)))
+  write(f"  f = function {fnname(flags)} () {{")
   write(    "    var local = 888;")
-  write(    "    deopt = {};".format("true" if deopt else "false"))
+  write(f'    deopt = {"true" if deopt else "false"};')
   local = 888
   write(    "    try {")
   write(    "      counter++;")
-  counter += 1
+  counter = 0 + 1
   resultTo = "local +=" if tryResultToLocal else "return"
-  if tryReturns and not (tryThrows and not tryFirstReturns):
+  if tryReturns and (not tryThrows or tryFirstReturns):
     write(  "      {} 4 + {increaseAndReturn15};".format(resultTo, **fragments))
-    if result == None:
+    if result is None:
       counter += 1
       if tryResultToLocal:
         local += 19
@@ -364,19 +359,19 @@ def printtest(flags):
         result = ("return", 19)
   if tryThrows:
     write(  "      {} 4 + {increaseAndThrow42};".format(resultTo, **fragments))
-    if result == None:
+    if result is None:
       counter += 1
       result = ("throw", 42)
   if tryReturns and tryThrows and not tryFirstReturns:
     write(  "      {} 4 + {increaseAndReturn15};".format(resultTo, **fragments))
-    if result == None:
+    if result is None:
       counter += 1
       if tryResultToLocal:
         local += 19
       else:
         result = ("return", 19)
   write(    "      counter++;")
-  if result == None:
+  if result is None:
     counter += 1
 
   if doCatch:
@@ -392,7 +387,7 @@ def printtest(flags):
       write("      return 2 + local;")
       if isinstance(result, tuple) and result[0] == "throw":
         result = ('return', 2 + local)
-    elif catchReturns and not catchWithLocal:
+    elif catchReturns:
       write("      return 2 + ex;");
       if isinstance(result, tuple) and result[0] == "throw":
         result = ('return', 2 + result[1])
@@ -402,10 +397,9 @@ def printtest(flags):
         local += result[1]
         result = None
         counter += 1
-    else:
-      if isinstance(result, tuple) and result[0] == "throw":
-        result = None
-        counter += 1
+    elif isinstance(result, tuple) and result[0] == "throw":
+      result = None
+      counter += 1
     write(  "      counter++;")
 
   if doFinally:
@@ -418,34 +412,33 @@ def printtest(flags):
     elif finallyReturns:
       write("      return 3 + local;")
       result = ('return', 3 + local)
-    elif not finallyReturns and not finallyThrows:
+    else:
       write("      local += 2;")
       local += 2
       counter += 1
-    else: assert False # unreachable
     write(  "      counter++;")
 
   write(    "    }")
   write(    "    counter++;")
-  if result == None:
+  if result is None:
     counter += 1
   if endReturnLocal:
     write(  "    return 5 + local;")
-    if result == None:
+    if result is None:
       result = ('return', 5 + local)
   write(    "  }")
 
-  if result == None:
+  if result is None:
     write(  "  resetOptAndAssertResultEquals(undefined, f);")
   else:
     tag, value = result
     if tag == "return":
-      write(  "  resetOptAndAssertResultEquals({}, f);".format(value))
+      write(f"  resetOptAndAssertResultEquals({value}, f);")
     else:
       assert tag == "throw"
-      write(  "  resetOptAndAssertThrowsWith({}, f);".format(value))
+      write(f"  resetOptAndAssertThrowsWith({value}, f);")
 
-  write(  "  assertEquals({}, counter);".format(counter))
+  write(f"  assertEquals({counter}, counter);")
   write(  "")
 
   global NUM_TESTS_PRINTED, NUM_TESTS_IN_SHARD
@@ -464,11 +457,11 @@ def rotateshard():
   global FILE, NUM_TESTS_IN_SHARD, SHARD_SIZE
   if MODE != 'shard':
     return
-  if FILE != None and NUM_TESTS_IN_SHARD < SHARD_SIZE:
-    return
   if FILE != None:
+    if NUM_TESTS_IN_SHARD < SHARD_SIZE:
+      return
     finishshard()
-    assert FILE == None
+    assert FILE is None
   FILE = open(SHARD_FILENAME_TEMPLATE.format(shard=SHARD_NUM), 'w')
   write_shard_header()
   NUM_TESTS_IN_SHARD = 0
@@ -478,7 +471,7 @@ def finishshard():
   assert FILE
   write_shard_footer()
   if MODE == 'shard':
-    print("Wrote shard {}.".format(SHARD_NUM))
+    print(f"Wrote shard {SHARD_NUM}.")
     FILE.close()
     FILE = None
     SHARD_NUM += 1
@@ -486,7 +479,7 @@ def finishshard():
 
 def write_shard_header():
   if MODE == 'shard':
-    write("// Shard {}.".format(SHARD_NUM))
+    write(f"// Shard {SHARD_NUM}.")
     write("")
   write(PREAMBLE)
   write("")
@@ -495,8 +488,8 @@ def write_shard_footer():
   write("}")
   write("%NeverOptimizeFunction(runThisShard);")
   write("")
-  write("// {} tests in this shard.".format(NUM_TESTS_IN_SHARD))
-  write("// {} tests up to here.".format(NUM_TESTS_PRINTED))
+  write(f"// {NUM_TESTS_IN_SHARD} tests in this shard.")
+  write(f"// {NUM_TESTS_PRINTED} tests up to here.")
   write("")
   write("runThisShard();")
 

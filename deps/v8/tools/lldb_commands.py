@@ -23,7 +23,7 @@ def current_frame(debugger):
   return current_thread(debugger).GetSelectedFrame()
 
 def no_arg_cmd(debugger, cmd):
-  cast_to_void_expr = '(void) {}'.format(cmd)
+  cast_to_void_expr = f'(void) {cmd}'
   evaluate_result = current_frame(debugger).EvaluateExpression(cast_to_void_expr)
   # When a void function is called the return value type is 0x1001 which
   # is specified in http://tiny.cc/bigskz. This does not indicate
@@ -31,16 +31,16 @@ def no_arg_cmd(debugger, cmd):
   kNoResult = 0x1001
   error = evaluate_result.GetError()
   if error.fail and error.value != kNoResult:
-      print("Failed to evaluate command {} :".format(cmd))
-      print(error.description)
+    print(f"Failed to evaluate command {cmd} :")
+    print(error.description)
   else:
     print("")
 
 def ptr_arg_cmd(debugger, name, param, cmd):
   if not param:
-    print("'{}' requires an argument".format(name))
+    print(f"'{name}' requires an argument")
     return
-  param = '(void*)({})'.format(param)
+  param = f'(void*)({param})'
   no_arg_cmd(debugger, cmd.format(param))
 
 #####################
@@ -97,23 +97,19 @@ def bta(debugger, *args):
     line = frame.GetLineEntry().GetLine()
     sourceFile = frame.GetLineEntry().GetFileSpec().GetFilename()
     if line:
-      sourceFile = sourceFile + ":" + str(line)
+      sourceFile = f"{sourceFile}:{str(line)}"
 
     if sourceFile is None:
       sourceFile = ""
-    print("[%-2s] %-60s %-40s" % (frame.GetFrameID(),
-                                  functionName.group(1),
-                                  sourceFile))
-    match = assert_re.match(str(functionSignature))
-    if match:
-      if match.group(3) == "false":
+    print("[%-2s] %-60s %-40s" % (frame.GetFrameID(), functionName[1], sourceFile))
+    if match := assert_re.match(str(functionSignature)):
+      if match[3] == "false":
         prefix = "Disallow"
         color = "\033[91m"
       else:
         prefix = "Allow"
         color = "\033[92m"
-      print("%s -> %s %s (%s)\033[0m" % (
-          color, prefix, match.group(2), match.group(1)))
+      print("%s -> %s %s (%s)\033[0m" % (color, prefix, match[2], match[1]))
 
 def setup_source_map_for_relative_paths(debugger):
   # Copied from Chromium's tools/lldb/lldbinit.py.
@@ -122,13 +118,11 @@ def setup_source_map_for_relative_paths(debugger):
   this_dir = os.path.dirname(os.path.abspath(__file__))
   source_dir = os.path.join(this_dir, os.pardir)
 
-  debugger.HandleCommand(
-    'settings set target.source-map ../.. ' + source_dir)
+  debugger.HandleCommand(f'settings set target.source-map ../.. {source_dir}')
 
 
 def __lldb_init_module(debugger, dict):
   setup_source_map_for_relative_paths(debugger)
   debugger.HandleCommand('settings set target.x86-disassembly-flavor intel')
   for cmd in ('job', 'jlh', 'jco', 'jld', 'jtt', 'jst', 'jss', 'bta'):
-    debugger.HandleCommand(
-      'command script add -f lldb_commands.{} {}'.format(cmd, cmd))
+    debugger.HandleCommand(f'command script add -f lldb_commands.{cmd} {cmd}')

@@ -23,9 +23,8 @@ def trace_begin():
   for phase in reversed(json_obj['phases']):
     if phase['name'] == "disassembly":
       for line in phase['data'].splitlines():
-        result = re.match(prog, line)
-        if result:
-          known_addrs.add(result.group(0))
+        if result := re.match(prog, line):
+          known_addrs.add(result[0])
 
 def trace_end():
   print(json.dumps(json_obj))

@@ -30,36 +30,32 @@ def myReadDict(lines, indent=""):
         if myIsAllSpaces(line):
             emptyLines += 1
             continue
-        result = mYamlKV.match(line)
-
-        if result:
+        if result := mYamlKV.match(line):
             if not dict:
                 dict = {}
             key = result.group(1).strip()
             value = result.group(2).strip()
             (lines, value) = myReadValue(lines, value, indent)
             dict[key] = value
+        elif dict and key and key in dict:
+            c = " " if emptyLines == 0 else "\n" * emptyLines
+            dict[key] += c + line.strip()
         else:
-            if dict and key and key in dict:
-                c = " " if emptyLines == 0 else "\n" * emptyLines
-                dict[key] += c + line.strip()
-            else:
-                raise Exception("monkeyYaml is confused at " + line)
+            raise Exception(f"monkeyYaml is confused at {line}")
         emptyLines = 0
     return lines, dict
 
 def myReadValue(lines, value, indent):
-    if value == ">" or value == "|":
+    if value in [">", "|"]:
         (lines, value) = myMultiline(lines, value == "|")
         value = value + "\n"
         return (lines, value)
     if lines and not value:
         if myMaybeList(lines[0]):
             return myMultilineList(lines, value)
-        indentMatch = re.match("(" + indent + r"\s+)", lines[0])
-        if indentMatch:
+        if indentMatch := re.match(f"({indent}" + r"\s+)", lines[0]):
             if ":" in lines[0]:
-                return myReadDict(lines, indentMatch.group(1))
+                return myReadDict(lines, indentMatch[1])
             return myMultiline(lines, False)
     return lines, myReadOneLine(value)
 
@@ -126,14 +122,16 @@ def myMultiline(lines, preserveNewlines=False):
             lines.insert(0, line)
             break;
         else:
-            if preserveNewlines:
-                if wasEmpty != None:
-                    value += "\n"
-            else:
-                if wasEmpty == False:
-                    value += " "
-                elif wasEmpty == True:
-                    value += "\n"
+            if (
+                preserveNewlines
+                and wasEmpty != None
+                or not preserveNewlines
+                and wasEmpty != False
+                and wasEmpty == True
+            ):
+                value += "\n"
+            elif not preserveNewlines and wasEmpty == False:
+                value += " "
             value += line[(indent):]
 
         wasEmpty = isEmpty

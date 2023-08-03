@@ -627,7 +627,7 @@ def get_base_class(klass):
   if (klass == 'Object'):
     return klass;
 
-  if (not (klass in klasses)):
+  if klass not in klasses:
     return None;
 
   k = klasses[klass];
@@ -638,19 +638,12 @@ def get_base_class(klass):
 # Loads class hierarchy and type information from "objects.h" etc.
 #
 def load_objects():
-  #
-  # Construct a dictionary for the classes we're sure should be present.
-  #
-  checktypes = {};
-  for klass in expected_classes:
-    checktypes[klass] = True;
-
-
+  checktypes = {klass: True for klass in expected_classes}
   for filename in sys.argv[2:]:
     if not filename.endswith("-inl.h"):
       load_objects_from_file(filename, checktypes)
 
-  if (len(checktypes) > 0):
+  if checktypes:
     for klass in checktypes:
       print('error: expected class \"%s\" not found' % klass);
 
@@ -722,17 +715,14 @@ def load_objects_from_file(objfilename, checktypes):
          uncommented_file):
     klass = match.group(1).strip();
     pklass = match.group(2);
-    if (pklass):
-      # Check for generated Torque class.
-      gen_match = re.match(
-          r'TorqueGenerated\w+\s*<\s*\w+,\s*(\w+)\s*>',
-          pklass)
-      if (gen_match):
-        pklass = gen_match.group(1)
+    if pklass:
+      if gen_match := re.match(r'TorqueGenerated\w+\s*<\s*\w+,\s*(\w+)\s*>',
+                               pklass):
+        pklass = gen_match[1]
       # Strip potential template arguments from parent
       # class.
       match = re.match(r'(\w+)(<.*>)?', pklass.strip());
-      pklass = match.group(1).strip();
+      pklass = match[1].strip();
     klasses[klass] = { 'parent': pklass };
 
   #
@@ -776,7 +766,7 @@ def load_objects_from_file(objfilename, checktypes):
     if (not usetype.endswith('_TYPE')):
       continue;
 
-    usetype = usetype[0:len(usetype) - len('_TYPE')];
+    usetype = usetype[:len(usetype) - len('_TYPE')];
     parts = usetype.split('_');
     cctype = '';
 
@@ -831,7 +821,7 @@ def load_objects_from_file(objfilename, checktypes):
         cctype = re.sub('String$', 'TwoByteString',
             cctype);
 
-      if (not (cctype in klasses)):
+      if cctype not in klasses:
         cctype = re.sub('OneByte', '', cctype);
         cctype = re.sub('TwoByte', '', cctype);
 
@@ -854,8 +844,8 @@ def parse_field(call):
       call[ii] == ' ';
 
   idx = call.find('(');
-  kind = call[0:idx];
-  rest = call[idx + 1: len(call) - 1];
+  kind = call[:idx];
+  rest = call[idx + 1:-1];
   args = re.split('\s*,\s*', rest);
 
   consts = [];
@@ -876,10 +866,10 @@ def parse_field(call):
 
 
   assert(offset is not None and dtype is not None);
-  return ({
-      'name': 'class_%s__%s__%s' % (klass, field, dtype),
-      'value': '%s::%s' % (klass, offset)
-  });
+  return {
+      'name': f'class_{klass}__{field}__{dtype}',
+      'value': f'{klass}::{offset}',
+  };
 
 #
 # Load field offset information from objects-inl.h etc.
@@ -890,7 +880,7 @@ def load_fields():
       load_fields_from_file(filename)
 
   for body in extras_accessors:
-    fields.append(parse_field('ACCESSORS(%s)' % body));
+    fields.append(parse_field(f'ACCESSORS({body})'));
 
 
 def load_fields_from_file(filename):
@@ -906,8 +896,8 @@ def load_fields_from_file(filename):
   prefixes = [ 'ACCESSORS', 'ACCESSORS2', 'ACCESSORS_GCSAFE',
          'SMI_ACCESSORS', 'ACCESSORS_TO_SMI',
          'RELEASE_ACQUIRE_ACCESSORS', 'WEAK_ACCESSORS' ];
-  prefixes += ([ prefix + "_CHECKED" for prefix in prefixes ] +
-         [ prefix + "_CHECKED2" for prefix in prefixes ])
+  prefixes += [f"{prefix}_CHECKED" for prefix in prefixes
+               ] + [f"{prefix}_CHECKED2" for prefix in prefixes]
   current = '';
   opens = 0;
 
@@ -923,11 +913,11 @@ def load_fields_from_file(filename):
         if (opens == 0):
           break;
 
-      current += line[0:ii + 1];
+      current += line[:ii + 1];
       continue;
 
     for prefix in prefixes:
-      if (not line.startswith(prefix + '(')):
+      if not line.startswith(f'{prefix}('):
         continue;
 
       if (len(current) > 0):
@@ -943,7 +933,7 @@ def load_fields_from_file(filename):
         if (opens == 0):
           break;
 
-      current += line[0:ii + 1];
+      current += line[:ii + 1];
 
   if (len(current) > 0):
     fields.append(parse_field(current));
@@ -961,7 +951,7 @@ def emit_constants(out, consts):
   for const in consts:
     name = ws.sub('', const['name'])
     value = ws.sub('', str(const['value']))  # Can be a number.
-    lines.append('V8_EXPORT int v8dbg_%s = %s;' % (name, value))
+    lines.append(f'V8_EXPORT int v8dbg_{name} = {value};')
 
   # Generate without duplicates and with preserved order.
   out.write('\n'.join(dict.fromkeys(lines)))
@@ -982,10 +972,7 @@ def emit_config():
   consts = [];
   for typename in sorted(typeclasses):
     klass = typeclasses[typename];
-    consts.append({
-        'name': 'type_%s__%s' % (klass, typename),
-        'value': typename
-    });
+    consts.append({'name': f'type_{klass}__{typename}', 'value': typename});
 
   emit_constants(out, consts);
 
@@ -996,13 +983,10 @@ def emit_config():
     bklass = get_base_class(klassname);
     if (bklass != 'Object'):
       continue;
-    if (pklass == None):
+    if pklass is None:
       continue;
 
-    consts.append({
-        'name': 'parent_%s__%s' % (klassname, pklass),
-        'value': 0
-    });
+    consts.append({'name': f'parent_{klassname}__{pklass}', 'value': 0});
 
   emit_constants(out, consts);
 
@@ -1012,7 +996,7 @@ def emit_config():
   out.write(footer);
 
 if (len(sys.argv) < 4):
-  print('usage: %s output.cc objects.h objects-inl.h' % sys.argv[0]);
+  print(f'usage: {sys.argv[0]} output.cc objects.h objects-inl.h');
   sys.exit(2);
 
 load_objects();

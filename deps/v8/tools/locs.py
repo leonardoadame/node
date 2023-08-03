@@ -134,33 +134,35 @@ def MaxWidth(strings):
 
 def GenerateCompileCommandsAndBuild(build_dir, out):
   if not os.path.isdir(build_dir):
-    print("Error: Specified build dir {} is not a directory.".format(
-        build_dir), file=sys.stderr)
+    print(
+        f"Error: Specified build dir {build_dir} is not a directory.",
+        file=sys.stderr,
+    )
     exit(1)
 
-  autoninja = "autoninja -C {}".format(build_dir)
+  autoninja = f"autoninja -C {build_dir}"
   if subprocess.call(autoninja, shell=True, stdout=out) != 0:
-    print("Error: Building {} failed.".format(build_dir), file=sys.stderr)
+    print(f"Error: Building {build_dir} failed.", file=sys.stderr)
     exit(1)
 
-  compile_commands_file = "{}/compile_commands.json".format(build_dir)
-  print("Generating compile commands in {}.".format(
-      compile_commands_file), file=out)
-  ninja = "ninja -C {} -t compdb cxx cc > {}".format(
-      build_dir, compile_commands_file)
+  compile_commands_file = f"{build_dir}/compile_commands.json"
+  print(f"Generating compile commands in {compile_commands_file}.", file=out)
+  ninja = f"ninja -C {build_dir} -t compdb cxx cc > {compile_commands_file}"
   if subprocess.call(ninja, shell=True, stdout=out) != 0:
-    print("Error: Cound not generate {} for {}.".format(
-        compile_commands_file, build_dir), file=sys.stderr)
+    print(
+        f"Error: Cound not generate {compile_commands_file} for {build_dir}.",
+        file=sys.stderr,
+    )
     exit(1)
 
-  ninja_deps_file = "{}/ninja-deps.txt".format(build_dir)
-  print("Generating ninja dependencies in {}.".format(
-      ninja_deps_file), file=out)
-  ninja = "ninja -C {} -t deps > {}".format(
-      build_dir, ninja_deps_file)
+  ninja_deps_file = f"{build_dir}/ninja-deps.txt"
+  print(f"Generating ninja dependencies in {ninja_deps_file}.", file=out)
+  ninja = f"ninja -C {build_dir} -t deps > {ninja_deps_file}"
   if subprocess.call(ninja, shell=True, stdout=out) != 0:
-    print("Error: Cound not generate {} for {}.".format(
-        ninja_deps_file, build_dir), file=sys.stderr)
+    print(
+        f"Error: Cound not generate {ninja_deps_file} for {build_dir}.",
+        file=sys.stderr,
+    )
     exit(1)
 
   return compile_commands_file, ninja_deps_file
@@ -198,7 +200,7 @@ class File(CompilationData):
     self.target = target
 
   def to_string(self):
-    return "{} {} {}".format(super().to_string(), self.file, self.target)
+    return f"{super().to_string()} {self.file} {self.target}"
 
 
 class Group(CompilationData):
@@ -228,14 +230,11 @@ def SetupReportGroups():
                            "third_party": '\\.\\./\\.\\./third_party',
                            "gen": 'gen'}
 
-  report_groups = default_report_groups.copy()
-  report_groups.update(dict(ARGS['group']))
-
+  report_groups = default_report_groups | ARGS['group']
   if ARGS['only']:
     for only_arg in ARGS['only']:
-      if not only_arg in report_groups.keys():
-        print("Error: specified report group '{}' is not defined.".format(
-            ARGS['only']))
+      if only_arg not in report_groups.keys():
+        print(f"Error: specified report group '{ARGS['only']}' is not defined.")
         exit(1)
       else:
         report_groups = {
@@ -345,7 +344,7 @@ def parse_ninja_deps(ninja_deps):
       continue
     if line[0] == ' ':
       # New dependency
-      if len(line) < 5 or line[0:4] != '    ' or line[5] == ' ':
+      if len(line) < 5 or line[:4] != '    ' or line[5] == ' ':
         sys.exit('Lines must have no indentation or exactly four ' +
                  'spaces.')
       dep = line[4:]
@@ -359,9 +358,9 @@ def parse_ninja_deps(ninja_deps):
       sys.exit('Unindented line must have a colon')
     if current_target is not None:
       sys.exit('Missing empty line before new target')
-    current_target = line[0:colon_pos]
+    current_target = line[:colon_pos]
     match = re.search(r"#deps (\d+)", line)
-    deps_number = match.group(1)
+    deps_number = match[1]
     source_dependencies[current_target] = int(deps_number)
 
   return (source_dependencies, header_dependents)
@@ -402,8 +401,8 @@ def Main():
     if not infile.is_file():
       return
 
-    clangcmd = clangcmd + " -E -P " + \
-        str(infile) + " -o /dev/stdout | sed '/^\\s*$/d' | wc -lc"
+    clangcmd = (f"{clangcmd} -E -P {str(infile)}" +
+                " -o /dev/stdout | sed '/^\\s*$/d' | wc -lc")
     loccmd = ("cat {}  | sed '\\;^\\s*//;d' | sed '\\;^/\\*;d'"
               " | sed '/^\\*/d' | sed '/^\\s*$/d' | wc -lc")
     loccmd = loccmd.format(infile)

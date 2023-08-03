@@ -116,22 +116,27 @@ class TestCase(testcase.D8TestCase):
     testroot = self.suite.testroot
     files = []
     if path.startswith("kraken"):
-      files.append(os.path.join(testroot, "%s-data.js" % path))
-      files.append(os.path.join(testroot, "%s.js" % path))
+      files.extend((
+          os.path.join(testroot, f"{path}-data.js"),
+          os.path.join(testroot, f"{path}.js"),
+      ))
     elif path.startswith("octane"):
-      files.append(os.path.join(testroot, "octane/base.js"))
-      files.append(os.path.join(testroot, "%s.js" % path))
+      files.extend((
+          os.path.join(testroot, "octane/base.js"),
+          os.path.join(testroot, f"{path}.js"),
+      ))
       if path.startswith("octane/gbemu"):
         files.append(os.path.join(testroot, "octane/gbemu-part2.js"))
       elif path.startswith("octane/typescript"):
-        files.append(os.path.join(testroot,
-                                  "octane/typescript-compiler.js"))
-        files.append(os.path.join(testroot, "octane/typescript-input.js"))
+        files.extend((
+            os.path.join(testroot, "octane/typescript-compiler.js"),
+            os.path.join(testroot, "octane/typescript-input.js"),
+        ))
       elif path.startswith("octane/zlib"):
         files.append(os.path.join(testroot, "octane/zlib-data.js"))
       files += ["-e", "BenchmarkSuite.RunSuites({});"]
     elif path.startswith("sunspider"):
-      files.append(os.path.join(testroot, "%s.js" % path))
+      files.append(os.path.join(testroot, f"{path}.js"))
     return files
 
   def _get_source_path(self):

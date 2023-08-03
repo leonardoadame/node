@@ -40,7 +40,8 @@ def RegisterName(raw):
 
 def Name(raw):
   parts = raw.split("#")
-  if len(modules) == 1: return "#%s" % parts[1]
+  if len(modules) == 1:
+    return f"#{parts[1]}"
   return "m%d#%s" % (modules[parts[0]], parts[1])
 
 class Function:
@@ -65,10 +66,10 @@ class Function:
     elif words[4] == "Liftoff,":
       self.AddLiftoffLine(words)
     else:
-      raise Exception("unknown compiler: %s" % words[4])
+      raise Exception(f"unknown compiler: {words[4]}")
 
   def AddTFLine(self, words):
-    assert not self.has_tf, "duplicate TF line for %s" % self.index
+    assert not self.has_tf, f"duplicate TF line for {self.index}"
     self.has_tf = True
     # 0        1        2  3     4         5    6 7  8   9     10 11
     # Compiled function #6 using TurboFan, took 0 ms and 14440 / 44656
@@ -82,7 +83,7 @@ class Function:
 
   def AddLiftoffLine(self, words):
     assert self.index == words[2], "wrong function"
-    assert not self.has_lo, "duplicate Liftoff line for %s" % self.index
+    assert not self.has_lo, f"duplicate Liftoff line for {self.index}"
     self.has_lo = True
     # 0        1        2  3     4        5    6 7  8   9   10     11       12
     # Compiled function #6 using Liftoff, took 0 ms and 968 bytes; bodysize 4
@@ -109,7 +110,7 @@ if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help", "help"):
   sys.exit(1)
 
 with open(sys.argv[1], "r") as f:
-  for line in f.readlines():
+  for line in f:
     words = line.strip().split(" ")
     if words[0] != "Compiled" or words[1] != "function":
       continue

@@ -28,23 +28,20 @@ def parse(file, seqlen):
     bc_cnt[i] = {}
   last = [None] * seqlen
   with open(file) as f:
-    l = f.readline()
-    while l:
+    while l := f.readline():
       l = l.strip()
       if l.startswith("Start bytecode interpreter"):
         for i in range(seqlen):
           last[i] = collections.deque(maxlen=i+1)
 
-      match = rx.search(l)
-      if match:
+      if match := rx.search(l):
         total += 1
-        bc = match.group('bc')
+        bc = match['bc']
         for i in range(seqlen):
           last[i].append(bc)
           key = ' --> '.join(last[i])
           bc_cnt[i][key] = bc_cnt[i].get(key,0) + 1
 
-      l = f.readline()
   return bc_cnt, total
 
 def print_most_common(d, seqlen, total):
@@ -52,14 +49,14 @@ def print_most_common(d, seqlen, total):
   for (k,v) in sorted_d:
     if v*100/total < 1.0:
       return
-    print("{}: {} ({} %)".format(k,v,(v*100/total)))
+    print(f"{k}: {v} ({v * 100 / total} %)")
 
 def main(argv):
   max_seq = 7
   bc_cnt, total = parse(argv[1],max_seq)
   for i in range(max_seq):
     print()
-    print("Most common of length {}".format(i+1))
+    print(f"Most common of length {i + 1}")
     print()
     print_most_common(bc_cnt[i], i, total)
 

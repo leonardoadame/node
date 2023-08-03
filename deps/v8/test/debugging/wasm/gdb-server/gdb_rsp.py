@@ -63,7 +63,7 @@ class GdbRspConnection(object):
     # done bind() on the TCP port. This is inherently unreliable.
     timeout_in_seconds = 10
     poll_time_in_seconds = 0.1
-    for i in xrange(int(timeout_in_seconds / poll_time_in_seconds)):
+    for _ in xrange(int(timeout_in_seconds / poll_time_in_seconds)):
       # On Mac OS X, we have to create a new socket FD for each retry.
       sock = socket.socket()
       # Do not delay sending small packets. This significantly speeds up debug
@@ -93,8 +93,8 @@ class GdbRspConnection(object):
     match = re.match('\+?\$([^#]*)#([0-9a-fA-F]{2})$', reply)
     if match is None:
       raise AssertionError('Unexpected reply message: %r' % reply)
-    reply_body = match.group(1)
-    checksum = match.group(2)
+    reply_body = match[1]
+    checksum = match[2]
     expected_checksum = '%02x' % RspChecksum(reply_body)
     if checksum != expected_checksum:
       raise AssertionError('Bad RSP checksum: %r != %r' %
@@ -110,8 +110,7 @@ class GdbRspConnection(object):
 
   def RspRequest(self, data):
     self.RspSendOnly(data)
-    reply = self._GetReply()
-    return reply
+    return self._GetReply()
 
   def Close(self):
     self._socket.close()
@@ -129,11 +128,7 @@ def KillProcess(process):
   try:
     process.kill()
   except OSError:
-    if sys.platform == 'win32':
-      # If process is already terminated, kill() throws
-      # "WindowsError: [Error 5] Access is denied" on Windows.
-      pass
-    else:
+    if sys.platform != 'win32':
       raise
   process.wait()
 
@@ -178,12 +173,17 @@ def AssertReplySignal(reply, signal):
   AssertEquals(ParseThreadStopReply(reply)['signal'], signal)
 
 def ParseThreadStopReply(reply):
-  match = re.match('T([0-9a-f]{2})thread-pcs:([0-9a-f]+);thread:([0-9a-f]+);(library:([0-9a-f]*);)?$', reply)
-  if not match:
+  if match := re.match(
+      'T([0-9a-f]{2})thread-pcs:([0-9a-f]+);thread:([0-9a-f]+);(library:([0-9a-f]*);)?$',
+      reply,
+  ):
+    return {
+        'signal': int(match[1], 16),
+        'thread_pc': int(match[2], 16),
+        'thread_id': int(match[3], 16),
+    }
+  else:
     raise AssertionError('Bad thread stop reply: %r' % reply)
-  return {'signal': int(match.group(1), 16),
-          'thread_pc': int(match.group(2), 16),
-          'thread_id': int(match.group(3), 16)}
 
 def CheckInstructionPtr(connection, expected_ip):
   ip_value = DecodeRegs(connection.RspRequest('g'))['pc']
