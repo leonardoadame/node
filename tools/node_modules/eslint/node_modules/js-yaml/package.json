@@ -48,7 +48,7 @@
     "argparse": "^2.0.1"
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^17.0.0",
+    "@rollup/plugin-commonjs": "^26.0.0",
     "@rollup/plugin-node-resolve": "^11.0.0",
     "ansi": "^0.3.1",
     "benchmark": "^2.1.4",
