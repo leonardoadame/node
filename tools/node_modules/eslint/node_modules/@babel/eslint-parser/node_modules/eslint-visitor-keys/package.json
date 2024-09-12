@@ -14,7 +14,7 @@
     "eslint": "^4.7.2",
     "eslint-config-eslint": "^4.0.0",
     "eslint-release": "^1.0.0",
-    "mocha": "^3.5.3",
+    "mocha": "^4.0.0",
     "nyc": "^11.2.1",
     "opener": "^1.4.3"
   },
