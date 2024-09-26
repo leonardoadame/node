@@ -1,0 +1,67 @@
+# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.25.1
+ignore: {}
+# patches apply the minimum changes required to fix a vulnerability
+patch:
+  'npm:debug:20170905':
+    - pkg > globby > fast-glob > micromatch > snapdragon > debug:
+        patched: '2023-07-07T17:21:00.632Z'
+        id: 'npm:debug:20170905'
+        path: pkg > globby > fast-glob > micromatch > snapdragon > debug
+    - pkg > globby > fast-glob > micromatch > braces > snapdragon > debug:
+        patched: '2023-07-07T17:21:00.632Z'
+        id: 'npm:debug:20170905'
+        path: pkg > globby > fast-glob > micromatch > braces > snapdragon > debug
+    - pkg > globby > fast-glob > micromatch > extglob > snapdragon > debug:
+        patched: '2023-07-07T17:21:00.632Z'
+        id: 'npm:debug:20170905'
+        path: pkg > globby > fast-glob > micromatch > extglob > snapdragon > debug
+    - pkg > globby > fast-glob > micromatch > nanomatch > snapdragon > debug:
+        patched: '2023-07-07T17:21:00.632Z'
+        id: 'npm:debug:20170905'
+        path: pkg > globby > fast-glob > micromatch > nanomatch > snapdragon > debug
+    - pkg > globby > fast-glob > micromatch > extglob > expand-brackets > debug:
+        patched: '2023-07-07T17:21:00.632Z'
+        id: 'npm:debug:20170905'
+        path: >-
+          pkg > globby > fast-glob > micromatch > extglob > expand-brackets >
+          debug
+    - pkg > globby > fast-glob > micromatch > extglob > expand-brackets > snapdragon > debug:
+        patched: '2023-07-07T17:21:00.632Z'
+        id: 'npm:debug:20170905'
+        path: >-
+          pkg > globby > fast-glob > micromatch > extglob > expand-brackets >
+          snapdragon > debug
+  SNYK-JS-LODASH-567746:
+    - '@babel/traverse > lodash':
+        patched: '2023-07-07T17:21:00.632Z'
+        id: SNYK-JS-LODASH-567746
+        path: '@babel/traverse > lodash'
+    - '@babel/traverse > @babel/generator > lodash':
+        patched: '2023-07-07T17:21:00.632Z'
+        id: SNYK-JS-LODASH-567746
+        path: '@babel/traverse > @babel/generator > lodash'
+    - '@babel/traverse > @babel/helper-split-export-declaration > @babel/types > lodash':
+        patched: '2023-07-07T17:21:00.632Z'
+        id: SNYK-JS-LODASH-567746
+        path: >-
+          @babel/traverse > @babel/helper-split-export-declaration >
+          @babel/types > lodash
+    - '@babel/traverse > @babel/helper-function-name > @babel/helper-get-function-arity > @babel/types > lodash':
+        patched: '2023-07-07T17:21:00.632Z'
+        id: SNYK-JS-LODASH-567746
+        path: >-
+          @babel/traverse > @babel/helper-function-name >
+          @babel/helper-get-function-arity > @babel/types > lodash
+    - eslint > lodash:
+        patched: '2023-07-07T17:21:00.632Z'
+        id: SNYK-JS-LODASH-567746
+        path: eslint > lodash
+    - eslint > inquirer > lodash:
+        patched: '2023-07-07T17:21:00.632Z'
+        id: SNYK-JS-LODASH-567746
+        path: eslint > inquirer > lodash
+    - eslint > table > lodash:
+        patched: '2023-07-07T17:21:00.632Z'
+        id: SNYK-JS-LODASH-567746
+        path: eslint > table > lodash
