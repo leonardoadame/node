@@ -44,7 +44,7 @@
     "proxy-agent": "^6.2.2",
     "semver": "^7.5.2",
     "supports-color": "^9.0.0",
-    "tar": "^6.0.1",
+    "tar": "^7.5.4",
     "ts-node": "^10.0.0",
     "typescript": "^5.0.4",
     "v8-compile-cache": "^2.3.0",
